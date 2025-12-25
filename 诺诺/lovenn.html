@@ -1,0 +1,3788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Christmas Tree - by lovenn</title>
+    <style>
+        /* 基础样式 */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #0b1a2a 0%, #000000 100%);
+            font-family: 'Times New Roman', serif;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* 加载动画 */
+        #loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease-out;
+        }
+
+        .loader-text {
+            color: #aaddff;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid #00ffcc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 标题 */
+        h1 {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            text-align: center;
+            margin: 0;
+            pointer-events: none;
+            font-size: 36px;
+            font-weight: 400;
+            background: linear-gradient(135deg, #e0f7fa 0%, #ffffff 50%, #88ccff 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: aurora-shine 6s linear infinite;
+            opacity: 0.9;
+        }
+
+        @keyframes aurora-shine {
+            0% {
+                background-position: 0% center;
+            }
+
+            100% {
+                background-position: 300% center;
+            }
+        }
+
+        /* 上传按钮 */
+        .upload-wrapper {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            z-index: 20;
+            pointer-events: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        .upload-btn,
+        .control-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            padding: 8px 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 10px;
+            text-transform: uppercase;
+            backdrop-filter: blur(5px);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover,
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #00ffcc;
+            color: #fff;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+        }
+
+        .control-btn.active {
+            background: rgba(0, 255, 204, 0.1);
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+
+        #file-input,
+        #import-input {
+            display: none;
+        }
+
+        /* 摄像头预览窗口 */
+        #webcam-wrapper {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 160px;
+            height: 120px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            opacity: 0.8;
+            z-index: 20;
+            background: #000;
+        }
+
+        #webcam-wrapper canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        /* 操作提示 */
+        #tips {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 15;
+        }
+
+        .tip-item {
+            margin: 6px 0;
+        }
+
+        .tip-key {
+            color: #00ffcc;
+            display: inline-block;
+            min-width: 60px;
+        }
+
+        /* 缓存管理模态框 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(10, 20, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 15px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+            margin-right: 15px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 400;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .photo-item {
+            position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .photo-item:hover {
+            border-color: #00ffcc;
+            transform: translateY(-2px);
+        }
+
+        .photo-item.in-scene {
+            border-color: #00ffcc;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+        }
+
+        .photo-thumb {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            display: block;
+        }
+
+        .photo-info {
+            padding: 8px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .photo-size {
+            margin-bottom: 4px;
+        }
+
+        .photo-status {
+            color: #00ffcc;
+            font-size: 9px;
+        }
+
+        .photo-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .photo-action-btn {
+            flex: 1;
+            padding: 6px 4px;
+            font-size: 9px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .photo-action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .photo-action-btn.add-scene {
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+
+        .photo-action-btn.add-scene:hover {
+            background: rgba(0, 255, 204, 0.1);
+        }
+
+        .photo-action-btn.remove-scene {
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+
+        .photo-action-btn.delete {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .photo-action-btn.delete:hover {
+            background: rgba(255, 68, 68, 0.1);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 14px;
+            font-size: 11px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.8);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: #fff;
+        }
+
+        .modal-action-btn.upload {
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+
+        .modal-action-btn.upload:hover {
+            background: rgba(0, 255, 204, 0.1);
+        }
+
+        .modal-action-btn.import {
+            border-color: #88aaff;
+            color: #88aaff;
+        }
+
+        .modal-action-btn.import:hover {
+            background: rgba(136, 170, 255, 0.1);
+        }
+
+        .modal-action-btn.export {
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+
+        .modal-action-btn.export:hover {
+            background: rgba(255, 170, 0, 0.1);
+        }
+
+        .cache-stats {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+        }
+
+        .cache-stats .highlight {
+            color: #00ffcc;
+        }
+
+        .cache-stats .warning {
+            color: #ffaa00;
+        }
+
+        .clear-all-btn {
+            padding: 8px 16px;
+            font-size: 11px;
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid #ff4444;
+            color: #ff4444;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .clear-all-btn:hover {
+            background: rgba(255, 68, 68, 0.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        /* 摄像头权限询问弹窗样式 */
+        #camera-permission-modal {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10000;
+            display: none;
+        }
+
+        #camera-permission-modal.show {
+            display: block;
+        }
+
+        #camera-permission-modal .modal-content {
+            max-width: 260px;
+            background: rgba(10, 20, 30, 0.95);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #camera-permission-modal .modal-header {
+            border-bottom: none;
+            padding: 0 0 10px 0;
+        }
+
+        #camera-permission-modal .modal-header h2 {
+            font-size: 14px;
+            color: #00ffcc;
+            margin: 0;
+        }
+
+        #camera-permission-modal .modal-body {
+            padding: 0;
+        }
+
+        #camera-permission-modal .modal-body p {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            margin: 5px 0;
+        }
+
+        #camera-permission-modal .modal-footer {
+            display: flex;
+            gap: 10px;
+            padding: 12px 0 0 0;
+            border-top: none;
+        }
+
+        #camera-permission-modal .modal-action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        /* 导出命名对话框样式 */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #00ffcc;
+        }
+
+        .form-group input[readonly] {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .filename-preview {
+            padding: 10px;
+            background: rgba(0, 255, 204, 0.1);
+            border-radius: 6px;
+            color: #00ffcc;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        /* 音乐管理样式 */
+        .music-source-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .music-tab {
+            flex: 1;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .music-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .music-tab.active {
+            background: rgba(0, 255, 204, 0.1);
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+
+        .music-tab-content {
+            padding: 15px 0;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #00ffcc;
+            background: rgba(0, 255, 204, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: #00ffcc;
+            background: rgba(0, 255, 204, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+        }
+
+        .current-music-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .music-info-label {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .music-info-value {
+            color: #00ffcc;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .music-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .music-control-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .music-control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+
+        .music-control-btn.playing {
+            background: rgba(0, 255, 204, 0.1);
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            justify-content: flex-end;
+        }
+
+        .volume-label {
+            font-size: 16px;
+        }
+
+        .volume-value {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 11px;
+            min-width: 35px;
+        }
+
+        #music-volume {
+            width: 100px;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        #music-volume::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #00ffcc;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        #music-volume::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: #00ffcc;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* 移动端适配 */
+        @media screen and (max-width: 768px) {
+
+            /* 标题缩小 */
+            h1 {
+                font-size: 20px;
+                top: 15px;
+            }
+
+            /* 控制按钮位置调整 */
+            .upload-wrapper {
+                top: 15px;
+                right: 15px;
+                gap: 8px;
+            }
+
+            .control-btn {
+                padding: 6px 12px;
+                font-size: 9px;
+            }
+
+            /* 隐藏控制按钮（管理、音乐）和键盘提示面板 */
+            .upload-wrapper,
+            #tips {
+                display: none !important;
+            }
+
+            /* 模态框优化 */
+            .modal-content {
+                width: 95%;
+                max-height: 90vh;
+            }
+
+            .modal-header {
+                padding: 15px;
+                flex-wrap: wrap;
+            }
+
+            .modal-header h2 {
+                font-size: 16px;
+            }
+
+            .header-actions {
+                margin-left: 0;
+                margin-right: 0;
+                width: 100%;
+                margin-top: 10px;
+                justify-content: flex-start;
+            }
+
+            .modal-close {
+                font-size: 28px;
+                padding: 8px;
+                min-width: 44px;
+                min-height: 44px;
+            }
+
+            .modal-body {
+                padding: 15px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* 照片网格更紧凑 */
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 10px;
+            }
+
+            .photo-action-btn {
+                padding: 10px 6px;
+                font-size: 10px;
+            }
+
+            .modal-footer {
+                padding: 12px 15px;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .cache-stats {
+                font-size: 11px;
+                text-align: center;
+            }
+
+            /* 摄像头预览缩小 */
+            #webcam-wrapper {
+                width: 100px;
+                height: 75px;
+                bottom: 5px;
+                right: 5px;
+            }
+
+            /* 音乐控制优化 */
+            .music-controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .music-control-btn {
+                width: 100%;
+                padding: 12px;
+            }
+
+            .volume-control {
+                width: 100%;
+            }
+
+            .music-source-tabs {
+                flex-direction: column;
+            }
+
+            .music-tab {
+                width: 100%;
+            }
+
+            /* 导出对话框优化 */
+            #export-name-modal .modal-content {
+                max-width: 95%;
+            }
+
+            /* 摄像头权限弹窗优化 */
+            #camera-permission-modal {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+
+            #camera-permission-modal .modal-content {
+                max-width: 100%;
+            }
+
+            .modal-action-btn {
+                padding: 10px 14px;
+                font-size: 12px;
+                min-height: 44px;
+            }
+        }
+
+        /* ========== 告白书信样式 ========== */
+
+        /* 书信模态框 */
+        #letter-modal .modal-content {
+            max-width: 500px;
+        }
+
+        .letter-preview-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .letter-preview-title {
+            color: #ffaa00;
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .letter-preview-content {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            line-height: 1.6;
+            max-height: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: pre-wrap;
+        }
+
+        .letter-preview-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .letter-upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .letter-upload-area:hover {
+            border-color: #ff6b9d;
+            background: rgba(255, 107, 157, 0.05);
+        }
+
+        .letter-upload-area.dragover {
+            border-color: #ff6b9d;
+            background: rgba(255, 107, 157, 0.1);
+        }
+
+        .letter-upload-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .letter-upload-text {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .letter-upload-hint {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+        }
+
+        .letter-music-section {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 20px;
+            margin-top: 10px;
+        }
+
+        .letter-music-title {
+            color: #ff6b9d;
+            font-size: 14px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .letter-music-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .letter-music-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .letter-music-option input[type="radio"] {
+            accent-color: #ff6b9d;
+        }
+
+        .letter-music-option label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .letter-custom-music {
+            margin-top: 10px;
+            padding-left: 24px;
+        }
+
+        .letter-custom-music-upload {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .letter-custom-music-name {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 11px;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .empty-letter-state {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* 信封飞出动画容器 */
+        #envelope-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 500;
+            pointer-events: none;
+            display: none;
+        }
+
+        #envelope-container.show {
+            display: block;
+            pointer-events: auto;
+        }
+
+        /* 信封样式 */
+        .envelope {
+            position: absolute;
+            width: 120px;
+            height: 80px;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            animation: envelopeFloat 3s ease-in-out infinite;
+        }
+
+        .envelope-body {
+            display: none;  /* 隐藏信封主体 */
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe4e4 100%);
+            border-radius: 4px;
+            box-shadow: 0 10px 40px rgba(255, 107, 157, 0.4), 0 0 20px rgba(255, 107, 157, 0.2);
+        }
+
+        .envelope-flap {
+            display: none;  /* 隐藏信封盖子 */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            background: linear-gradient(180deg, #ffccd5 0%, #fff5f5 100%);
+            clip-path: polygon(0 0, 50% 100%, 100% 0);
+            transform-origin: top center;
+            transition: transform 0.5s ease;
+        }
+
+        .envelope-heart {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;  /* 改成大图标 */
+            filter: drop-shadow(0 0 15px rgba(255, 105, 180, 0.8));  /* 发光效果 */
+            animation: heartBeat 1s ease-in-out infinite;  /* 心跳动画 */
+        }
+
+        /* 心跳动画 */
+        @keyframes heartBeat {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.15); }
+        }
+
+        /* 信封悬停效果已移除，因为改用比心图标 */
+
+        @keyframes envelopeFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes envelopeFlyIn {
+            0% {
+                opacity: 0;
+                transform: translate(0, 0) scale(0.3) rotate(-20deg);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translate(calc(50vw - 60px), calc(50vh - 40px)) scale(0.8) rotate(10deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translate(calc(50vw - 60px), calc(50vh - 40px)) scale(1) rotate(0deg);
+            }
+        }
+
+        /* 比心特效 */
+        .heart-particle {
+            position: fixed;
+            font-size: 20px;
+            pointer-events: none;
+            z-index: 600;
+            animation: heartFloat 1.5s ease-out forwards;
+        }
+
+        @keyframes heartFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(1.5);
+            }
+        }
+
+        /* 书信展示全屏 */
+        #letter-display {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0);
+            transition: background 0.5s ease;
+        }
+
+        #letter-display.show {
+            display: flex;
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        /* 复古信纸 */
+        .letter-paper {
+            position: relative;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            background: linear-gradient(to bottom,
+                    #fef9e7 0%,
+                    #fdf6e3 50%,
+                    #f5ecd3 100%);
+            border-radius: 4px;
+            padding: 40px 50px;
+            box-shadow:
+                0 0 0 1px rgba(139, 90, 43, 0.1),
+                0 20px 60px rgba(0, 0, 0, 0.4),
+                inset 0 0 80px rgba(139, 90, 43, 0.05);
+            transform: scale(0.8) rotateX(10deg);
+            opacity: 0;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow-y: auto;
+            font-family: 'Georgia', 'Times New Roman', serif;
+        }
+
+        #letter-display.show .letter-paper {
+            transform: scale(1) rotateX(0deg);
+            opacity: 1;
+        }
+
+        /* 信纸装饰 */
+        .letter-paper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(transparent,
+                    transparent 27px,
+                    rgba(139, 90, 43, 0.1) 28px);
+            pointer-events: none;
+        }
+
+        .letter-paper::after {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            border: 1px solid rgba(139, 90, 43, 0.15);
+            border-radius: 2px;
+            pointer-events: none;
+        }
+
+        .letter-paper-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px dashed rgba(139, 90, 43, 0.2);
+        }
+
+        .letter-paper-title {
+            color: #8b4513;
+            font-size: 24px;
+            font-weight: normal;
+            margin: 0;
+            text-shadow: 1px 1px 2px rgba(139, 90, 43, 0.1);
+        }
+
+        .letter-paper-date {
+            color: rgba(139, 90, 43, 0.6);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .letter-paper-content {
+            color: #5d4037;
+            font-size: 16px;
+            line-height: 2;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            position: relative;
+            z-index: 1;
+        }
+
+        .letter-paper-content .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: #8b4513;
+            margin-left: 2px;
+            animation: cursorBlink 0.8s infinite;
+        }
+
+        @keyframes cursorBlink {
+
+            0%,
+            50% {
+                opacity: 1;
+            }
+
+            51%,
+            100% {
+                opacity: 0;
+            }
+        }
+
+        .letter-paper-footer {
+            text-align: right;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px dashed rgba(139, 90, 43, 0.2);
+            color: #8b4513;
+            font-style: italic;
+        }
+
+        .letter-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            background: rgba(139, 90, 43, 0.1);
+            border: 1px solid rgba(139, 90, 43, 0.2);
+            border-radius: 50%;
+            color: #8b4513;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .letter-close-btn:hover {
+            background: rgba(139, 90, 43, 0.2);
+        }
+
+        /* 手势反馈 */
+        .gesture-feedback {
+            position: fixed;
+            bottom: 140px;
+            right: 20px;
+            background: rgba(255, 107, 157, 0.9);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .gesture-feedback.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .letter-paper {
+                padding: 30px 25px;
+                max-width: 95%;
+            }
+
+            .letter-paper-title {
+                font-size: 20px;
+            }
+
+            .letter-paper-content {
+                font-size: 14px;
+            }
+
+            .envelope {
+                width: 100px;
+                height: 66px;
+            }
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://testingcf.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://testingcf.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@mediapipe/tasks-vision": "https://testingcf.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="loader">
+        <div class="spinner"></div>
+        <div class="loader-text">Loading...</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <h1>Merry Christmas</h1>
+        <div class="upload-wrapper">
+            <button class="control-btn" id="manage-btn" title="管理缓存照片">📁 管理</button>
+            <button class="control-btn" id="music-btn" title="播放/暂停音乐">🎵 音乐</button>
+            <button class="control-btn" id="letter-btn" title="告白书信">💌 书信</button>
+        </div>
+    </div>
+
+    <!-- 背景音乐 -->
+    <audio id="bg-music" loop autoplay>
+        <source src="music.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="webcam-wrapper">
+        <video id="webcam" autoplay playsinline style="display:none;"></video>
+        <canvas id="webcam-preview"></canvas>
+    </div>
+
+    <!-- 缓存管理模态框 -->
+    <div id="cache-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>照片缓存管理</h2>
+                <div class="header-actions">
+                    <label class="modal-action-btn upload">
+                        📷 上传照片
+                        <input type="file" id="file-input" multiple accept="image/*" style="display:none;">
+                    </label>
+                    <label class="modal-action-btn import">
+                        📥 导入
+                        <input type="file" id="import-input" accept=".json" style="display:none;">
+                    </label>
+                    <button class="modal-action-btn export" id="export-btn">📤 导出</button>
+                </div>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="photo-grid" class="photo-grid"></div>
+            </div>
+            <div class="modal-footer">
+                <div class="cache-stats" id="cache-stats">
+                    已缓存 <span class="highlight">0</span> 张照片 (<span class="highlight">0 KB</span> / 50 MB)
+                </div>
+                <button class="clear-all-btn" id="clear-all-btn">清空全部</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出命名对话框 -->
+    <div id="export-name-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>导出照片</h2>
+                <button class="modal-close" id="export-name-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>主题名</label>
+                    <input type="text" id="export-theme" value="Merry Christmas">
+                </div>
+                <div class="form-group">
+                    <label>自定义名称</label>
+                    <input type="text" id="export-custom" placeholder="例：女朋友靓照合集">
+                </div>
+                <div class="form-group">
+                    <label>日期</label>
+                    <input type="text" id="export-date" readonly>
+                </div>
+                <div class="filename-preview">
+                    预览: <span id="filename-preview"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-action-btn" id="export-cancel">取消</button>
+                <button class="modal-action-btn export" id="export-confirm">确认导出</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音乐管理对话框 -->
+    <div id="music-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>🎵 音乐管理</h2>
+                <button class="modal-close" id="music-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="music-source-tabs">
+                    <button class="music-tab active" data-tab="url">🔗 音乐链接</button>
+                    <button class="music-tab" data-tab="upload">📁 上传文件</button>
+                </div>
+
+                <div class="music-tab-content" id="tab-url">
+                    <div class="form-group">
+                        <label>输入音乐链接 (支持 MP3, WAV, OGG 等格式)</label>
+                        <input type="text" id="music-url-input" placeholder="https://example.com/music.mp3">
+                    </div>
+                    <button class="modal-action-btn upload" id="apply-url-btn" style="width: 100%;">应用链接</button>
+                </div>
+
+                <div class="music-tab-content" id="tab-upload" style="display: none;">
+                    <div class="form-group">
+                        <label>选择本地音频文件</label>
+                        <div class="upload-area" id="music-upload-area">
+                            <div class="upload-icon">🎵</div>
+                            <div class="upload-text">点击或拖拽音频文件到这里</div>
+                            <div class="upload-hint">支持 MP3, WAV, OGG, M4A 格式</div>
+                            <input type="file" id="music-file-input" accept="audio/*" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="current-music-info" id="current-music-info">
+                    <div class="music-info-label">当前音乐:</div>
+                    <div class="music-info-value" id="current-music-name">默认音乐</div>
+                </div>
+
+                <div class="music-controls">
+                    <button class="music-control-btn" id="music-play-btn">▶ 播放</button>
+                    <button class="music-control-btn" id="music-pause-btn">⏸ 暂停</button>
+                    <div class="volume-control">
+                        <span class="volume-label">🔊</span>
+                        <input type="range" id="music-volume" min="0" max="100" value="50">
+                        <span class="volume-value" id="volume-value">50%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-action-btn" id="music-reset-btn">🔄 恢复默认</button>
+                <button class="modal-action-btn export" id="music-close-btn">完成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 摄像头权限询问弹窗 -->
+    <div id="camera-permission-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>开启摄像头？</h2>
+            </div>
+            <div class="modal-body">
+                <p>开启后可用手势控制场景</p>
+                <p>不开启则用键盘控制</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-action-btn" id="camera-deny-btn">跳过</button>
+                <button class="modal-action-btn upload" id="camera-allow-btn">开启</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 书信管理模态框 -->
+    <div id="letter-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💌 告白书信</h2>
+                <button class="modal-close" id="letter-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- 当前书信预览 -->
+                <div id="letter-preview-section" style="display: none;">
+                    <div class="letter-preview-box">
+                        <div class="letter-preview-title">📄 当前书信</div>
+                        <div class="letter-preview-content" id="letter-preview-text"></div>
+                        <div class="letter-preview-actions">
+                            <button class="modal-action-btn" id="preview-letter-btn">👁 预览</button>
+                            <button class="modal-action-btn" id="delete-letter-btn"
+                                style="border-color: #ff4444; color: #ff4444;">🗑 删除</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 上传区域 -->
+                <div id="letter-upload-section">
+                    <div class="letter-upload-area" id="letter-upload-area">
+                        <div class="letter-upload-icon">💌</div>
+                        <div class="letter-upload-text">点击或拖拽 txt 文件到这里</div>
+                        <div class="letter-upload-hint">上传您的告白书信</div>
+                        <input type="file" id="letter-file-input" accept=".txt" style="display: none;">
+                    </div>
+                </div>
+
+                <!-- 浪漫音乐设置 -->
+                <div class="letter-music-section">
+                    <div class="letter-music-title">🎵 浪漫音乐设置</div>
+                    <div class="letter-music-options">
+                        <div class="letter-music-option">
+                            <input type="radio" name="letter-music" id="music-default" value="default" checked>
+                            <label for="music-default">使用默认浪漫音乐</label>
+                        </div>
+                        <div class="letter-music-option">
+                            <input type="radio" name="letter-music" id="music-custom" value="custom">
+                            <label for="music-custom">自定义音乐</label>
+                        </div>
+                        <div class="letter-custom-music" id="letter-custom-music" style="display: none;">
+                            <div class="letter-custom-music-upload">
+                                <button class="modal-action-btn upload" id="upload-custom-music-btn">上传音频</button>
+                                <span class="letter-custom-music-name" id="custom-music-name">未选择文件</span>
+                                <input type="file" id="custom-music-input" accept="audio/*" style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="cache-stats">
+                    <span>👍 点赞手势触发书信展示</span>
+                </div>
+                <button class="modal-action-btn export" id="letter-close-btn">完成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 信封容器 -->
+    <div id="envelope-container">
+        <div class="envelope" id="envelope">
+            <div class="envelope-body"></div>
+            <div class="envelope-flap"></div>
+            <div class="envelope-heart">❤️</div>
+        </div>
+    </div>
+
+    <!-- 书信展示区域 -->
+    <div id="letter-display">
+        <div class="letter-paper">
+            <button class="letter-close-btn" id="letter-display-close">&times;</button>
+            <div class="letter-paper-header">
+                <h2 class="letter-paper-title" id="letter-title">致最爱的你</h2>
+                <div class="letter-paper-date" id="letter-date"></div>
+            </div>
+            <div class="letter-paper-content" id="letter-content"></div>
+            <div class="letter-paper-footer">
+                —— 永远爱你的人
+            </div>
+        </div>
+    </div>
+
+    <!-- 点赞手势反馈 -->
+    <div class="gesture-feedback" id="gesture-feedback">👍 点赞检测中...</div>
+
+    <!-- 浪漫背景音乐 -->
+    <audio id="romantic-music" loop>
+        <source src="music.mp3" type="audio/mpeg">
+    </audio>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+        import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+
+        // ========== 预设音乐配置（可自定义修改） ==========
+        const PRESET_MUSIC = {
+            // 背景音乐（圣诞树场景默认播放）
+            background: 'music.mp3',
+            // 浪漫音乐（书信展示时播放）
+            romantic: 'music.mp3'
+        };
+
+        // 全局变量
+        let scene, camera, renderer, composer, bloomPass, mainGroup;
+        let clock = new THREE.Clock();
+        let particleSystem = [], photoMeshGroup = new THREE.Group();
+        let handLandmarker, video, webcamCanvas, webcamCtx;
+        let snowSystem;
+        let photoDataArray = []; // 存储所有照片的base64数据
+        let photoIdToMeshMap = new Map(); // 照片ID到场景mesh的映射
+
+        // ========== 预置照片数据 ==========
+        // 使用方法：将导出的JSON文件中的 photos 数组内容粘贴到下面的数组中
+        // 格式示例：["data:image/jpeg;base64,/9j/4AAQ...", "data:image/png;base64,iVBORw0..."]
+        const PRESET_PHOTOS = [
+    "photo1.png",
+    "photo2.png",
+    "photo3.png",
+    "photo4.png",
+    "photo5.png",
+    "photo6.png",
+    "photo7.png"
+]
+        // ====================================
+
+        // 缓存配置
+        const CACHE_CONFIG = {
+            maxSizeMB: 50,
+            warnAtPercent: 80, // 达到80%时提示用户
+            dbName: 'ChristmasTreeDB',
+            storeName: 'photos',
+            // 音乐缓存配置
+            musicStoreName: 'music',
+            maxMusicSizeMB: 20
+        };
+
+        // IndexedDB 工具函数
+        const PhotoCache = {
+            db: null,
+
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(CACHE_CONFIG.dbName, 1);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        resolve();
+                    };
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(CACHE_CONFIG.storeName)) {
+                            const store = db.createObjectStore(CACHE_CONFIG.storeName, { keyPath: 'id' });
+                            store.createIndex('timestamp', 'timestamp', { unique: false });
+                        }
+                    };
+                });
+            },
+
+            async savePhoto(base64Data) {
+                // 检查浏览器存储空间
+                const newSize = this.getBase64Size(base64Data);
+
+                if (navigator.storage && navigator.storage.estimate) {
+                    try {
+                        const estimate = await navigator.storage.estimate();
+                        const usedPercent = (estimate.usage / estimate.quota) * 100;
+                        const remainingSpace = estimate.quota - estimate.usage;
+
+                        // 接近限制时提示用户（80%）
+                        if (usedPercent >= CACHE_CONFIG.warnAtPercent && usedPercent < 95) {
+                            console.warn(`存储空间使用率: ${usedPercent.toFixed(1)}%，建议清理一些照片`);
+                        }
+
+                        // 空间不足时阻止上传
+                        if (remainingSpace < newSize * 1.1) { // 留10%余量
+                            return { success: false, reason: 'size', message: '浏览器存储空间不足，请先删除一些照片或清理浏览器缓存' };
+                        }
+                    } catch (e) {
+                        console.warn('无法检测存储空间:', e);
+                    }
+                }
+
+                const photo = {
+                    id: 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    base64: base64Data,
+                    timestamp: Date.now(),
+                    size: newSize,
+                    inScene: true
+                };
+
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction(CACHE_CONFIG.storeName, 'readwrite');
+                    const store = tx.objectStore(CACHE_CONFIG.storeName);
+                    const request = store.add(photo);
+                    request.onsuccess = () => resolve({ success: true, photo });
+                    request.onerror = () => resolve({ success: false, reason: 'db', message: '保存失败' });
+                });
+            },
+
+            async getAllPhotos() {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction(CACHE_CONFIG.storeName, 'readonly');
+                    const store = tx.objectStore(CACHE_CONFIG.storeName);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result || []);
+                    request.onerror = () => resolve([]);
+                });
+            },
+
+            async deletePhoto(id) {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction(CACHE_CONFIG.storeName, 'readwrite');
+                    const store = tx.objectStore(CACHE_CONFIG.storeName);
+                    const request = store.delete(id);
+                    request.onsuccess = () => resolve(true);
+                    request.onerror = () => resolve(false);
+                });
+            },
+
+            async updatePhoto(photo) {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction(CACHE_CONFIG.storeName, 'readwrite');
+                    const store = tx.objectStore(CACHE_CONFIG.storeName);
+                    const request = store.put(photo);
+                    request.onsuccess = () => resolve(true);
+                    request.onerror = () => resolve(false);
+                });
+            },
+
+            async clearAll() {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction(CACHE_CONFIG.storeName, 'readwrite');
+                    const store = tx.objectStore(CACHE_CONFIG.storeName);
+                    const request = store.clear();
+                    request.onsuccess = () => resolve(true);
+                    request.onerror = () => resolve(false);
+                });
+            },
+
+            async getStats() {
+                const photos = await this.getAllPhotos();
+                const totalSize = photos.reduce((sum, p) => sum + (p.size || 0), 0);
+                return {
+                    count: photos.length,
+                    totalSize,
+                    inSceneCount: photos.filter(p => p.inScene).length
+                };
+            },
+
+            getBase64Size(base64) {
+                // 计算base64字符串的实际字节大小
+                const base64Length = base64.length - (base64.indexOf(',') + 1);
+                const padding = (base64.match(/=+$/) || [''])[0].length;
+                return Math.floor((base64Length * 3) / 4) - padding;
+            },
+
+            formatSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+            }
+        };
+
+        // 材质对象
+        const MATERIALS = {};
+
+        // 状态管理
+        const STATE = {
+            mode: 'TREE', // TREE, SCATTER, FOCUS
+            hand: { detected: false, x: 0, y: 0 },
+            rotation: { x: 0, y: 0 },
+            camera: {
+                targetPos: new THREE.Vector3(0, 2, 50),
+                targetLookAt: new THREE.Vector3(0, 0, 0),
+                currentLookAt: new THREE.Vector3(0, 0, 0)
+            },
+            focusTarget: null
+        };
+
+        // 初始化 Three.js
+        function initThree() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x111111, 0.02);
+
+            camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 50);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.toneMappingExposure = 2.2;
+            container.appendChild(renderer.domElement);
+
+            scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+        }
+
+        // 创建材质
+        function createMaterials() {
+            MATERIALS.gold = new THREE.MeshStandardMaterial({
+                color: 0xb8860b,  // 深金色（暗金）
+                metalness: 0.7,
+                roughness: 0.3,
+                envMapIntensity: 1.2,
+                emissive: 0x3d2b0f,  // 暗金色自发光
+                emissiveIntensity: 0.2
+            });
+
+            MATERIALS.green = new THREE.MeshStandardMaterial({
+                color: 0x2d5016,  // 深绿色（松树绿）
+                metalness: 0.1,
+                roughness: 0.9,
+                emissive: 0x1a2e0d,  // 暗绿色自发光
+                emissiveIntensity: 0.15
+            });
+
+            MATERIALS.red = new THREE.MeshPhysicalMaterial({
+                color: 0x8b2635,  // 深红色（酒红）
+                metalness: 0.2,
+                roughness: 0.4,
+                clearcoat: 0.6,
+                emissive: 0x3d1419  // 暗红色自发光
+            });
+
+            MATERIALS.frame = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+            MATERIALS.star = new THREE.MeshStandardMaterial({
+                color: 0xffd700,  // 金色星星
+                emissive: 0xffaa00,  // 金色自发光
+                emissiveIntensity: 0.8,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+
+            // 糖果纹理（红白条纹）
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, 128, 128);
+            ctx.fillStyle = '#c41e3a';  // 圣诞红
+            ctx.beginPath();
+            for (let i = -128; i < 256; i += 32) {
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i + 32, 128);
+                ctx.lineTo(i + 16, 128);
+                ctx.lineTo(i - 16, 0);
+            }
+            ctx.fill();
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(3, 3);
+            MATERIALS.candy = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.4 });
+        }
+
+        // 设置灯光
+        function setupLights() {
+            scene.add(new THREE.AmbientLight(0xfff5e6, 0.5));  // 温暖的环境光
+
+            const innerLight = new THREE.PointLight(0xffd700, 1.5, 20);  // 金色内部光
+            innerLight.position.set(0, 5, 0);
+            mainGroup.add(innerLight);
+
+            const spot1 = new THREE.SpotLight(0xffe4b5, 1200);  // 温暖的聚光灯
+            spot1.position.set(30, 40, 40);
+            scene.add(spot1);
+
+            const spot2 = new THREE.SpotLight(0xc41e3a, 600);  // 圣诞红聚光灯
+            spot2.position.set(-30, 20, -30);
+            scene.add(spot2);
+
+            const fill = new THREE.DirectionalLight(0xffffff, 0.6);  // 柔和的补光
+            fill.position.set(0, 0, 50);
+            scene.add(fill);
+        }
+
+        // 粒子类
+        class Particle {
+            constructor(mesh, type) {
+                this.mesh = mesh;
+                this.type = type;
+                this.posTree = new THREE.Vector3();
+                this.posScatter = new THREE.Vector3();
+                this.baseScale = mesh.scale.x;
+                this.spinSpeed = new THREE.Vector3(
+                    Math.random() - 0.5,
+                    Math.random() - 0.5,
+                    Math.random() - 0.5
+                ).multiplyScalar(type === 'PHOTO' ? 0.3 : 2.0);
+
+                // 树形位置
+                const h = 24, halfH = 12;
+                let t = Math.pow(Math.random(), 0.8);
+                const y = (t * h) - halfH;
+                const r = Math.max(0.5, 8 * (1.0 - t)) * (0.8 + Math.random() * 0.4);
+                const a = t * 50 * Math.PI + Math.random() * Math.PI;
+                this.posTree.set(Math.cos(a) * r, y, Math.sin(a) * r);
+
+                // 散开位置
+                const rs = 12 + Math.random() * 25;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                this.posScatter.set(
+                    rs * Math.sin(phi) * Math.cos(theta),
+                    rs * Math.sin(phi) * Math.sin(theta),
+                    rs * Math.cos(phi)
+                );
+            }
+
+            update(dt, mode) {
+                let target = (mode === 'SCATTER' || mode === 'FOCUS') ? this.posScatter : this.posTree;
+                this.mesh.position.lerp(target, 2.5 * dt);
+
+                // 朝向控制
+                if (mode === 'FOCUS' && STATE.focusTarget === this.mesh) {
+                    this.mesh.lookAt(camera.position);
+                } else if (mode === 'SCATTER') {
+                    this.mesh.rotation.x += this.spinSpeed.x * dt;
+                    this.mesh.rotation.y += this.spinSpeed.y * dt;
+                } else {
+                    this.mesh.rotation.set(
+                        THREE.MathUtils.lerp(this.mesh.rotation.x, 0, dt),
+                        this.mesh.rotation.y + 0.5 * dt,
+                        THREE.MathUtils.lerp(this.mesh.rotation.z, 0, dt)
+                    );
+                }
+
+                // 缩放控制
+                let s = this.baseScale;
+                if ((mode === 'SCATTER' || mode === 'FOCUS') && this.type === 'PHOTO') {
+                    s = this.baseScale * 2.5;
+                }
+                this.mesh.scale.lerp(new THREE.Vector3(s, s, s), 4 * dt);
+            }
+        }
+
+        // 创建粒子系统
+        function createParticles() {
+            // 使用更小的球体作为粒子
+            const particleGeometry = new THREE.SphereGeometry(0.08, 12, 12);
+
+            // 创建透明发光材质
+            const createGlowMaterial = (color, emissiveColor) => {
+                return new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.9,  // 提高到0.9，更亮
+                    emissive: emissiveColor,
+                    emissiveIntensity: 2.5,  // 提高到2.5，发光更强
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+            };
+
+            // 定义粒子材质 - 使用更亮的颜色
+            const particleMaterials = {
+                green: createGlowMaterial(0x7fffd4, 0x00ff7f),      // 更亮的绿色
+                gold: createGlowMaterial(0xffd700, 0xffff00),       // 更亮的金色
+                red: createGlowMaterial(0xff6b6b, 0xff4444),        // 更亮的红色
+                blue: createGlowMaterial(0x87ceeb, 0x00bfff),       // 更亮的蓝色
+                pink: createGlowMaterial(0xffb6c1, 0xff69b4),       // 更亮的粉色
+                white: createGlowMaterial(0xffffff, 0xffffff)       // 纯白色
+            };
+
+            // 创建更多粒子，形成更密集的效果
+            for (let i = 0; i < 4000; i++) {
+                const r = Math.random();
+                let material, type;
+
+                // 随机选择颜色
+                if (r < 0.35) {
+                    material = particleMaterials.green;
+                    type = 'GREEN';
+                } else if (r < 0.55) {
+                    material = particleMaterials.gold;
+                    type = 'GOLD';
+                } else if (r < 0.70) {
+                    material = particleMaterials.red;
+                    type = 'RED';
+                } else if (r < 0.82) {
+                    material = particleMaterials.blue;
+                    type = 'BLUE';
+                } else if (r < 0.92) {
+                    material = particleMaterials.pink;
+                    type = 'PINK';
+                } else {
+                    material = particleMaterials.white;
+                    type = 'WHITE';
+                }
+
+                const mesh = new THREE.Mesh(particleGeometry, material);
+
+                // 随机大小，创造深度感
+                const s = 0.5 + Math.random() * 0.8;  // 0.5-1.3，增加范围
+                mesh.scale.set(s, s, s);
+                mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+
+                mainGroup.add(mesh);
+                particleSystem.push(new Particle(mesh, type));
+            }
+
+            // 顶部星星 - 也改成发光效果
+            const starMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffd700,
+                transparent: true,
+                opacity: 0.9,
+                emissive: 0xffaa00,
+                emissiveIntensity: 2.0,
+                blending: THREE.AdditiveBlending
+            });
+            const star = new THREE.Mesh(new THREE.OctahedronGeometry(1.2, 0), starMaterial);
+            star.position.set(0, 13.2, 0);
+            mainGroup.add(star);
+
+            mainGroup.add(photoMeshGroup);
+        }
+
+        // 创建额外的圣诞装饰元素
+        function createChristmasDecorations() {
+            // 创建飘落的圣诞装饰粒子（更透明、更梦幻）
+            const decorationGeometry = new THREE.BufferGeometry();
+            const decorationCount = 300;  // 增加数量
+            const positions = new Float32Array(decorationCount * 3);
+            const colors = new Float32Array(decorationCount * 3);
+            const sizes = new Float32Array(decorationCount);
+
+            // 更亮的圣诞配色
+            const christmasColors = [
+                { r: 1.0, g: 0.3, b: 0.3 },   // 亮红色
+                { r: 0.3, g: 1.0, b: 0.5 },   // 亮绿色
+                { r: 1.0, g: 0.9, b: 0.2 },   // 亮金色
+                { r: 0.4, g: 0.7, b: 1.0 },   // 亮蓝色
+                { r: 1.0, g: 0.7, b: 0.9 }    // 粉色
+            ];
+
+            for (let i = 0; i < decorationCount; i++) {
+                const i3 = i * 3;
+                // 随机位置
+                positions[i3] = (Math.random() - 0.5) * 60;
+                positions[i3 + 1] = Math.random() * 50 - 10;
+                positions[i3 + 2] = (Math.random() - 0.5) * 60;
+
+                // 随机圣诞颜色
+                const color = christmasColors[Math.floor(Math.random() * christmasColors.length)];
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+
+                // 随机大小
+                sizes[i] = Math.random() * 0.6 + 0.3;
+            }
+
+            decorationGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            decorationGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            decorationGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+            const decorationMaterial = new THREE.PointsMaterial({
+                size: 0.8,  // 从0.6增加到0.8
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,  // 从0.6提高到0.8
+                blending: THREE.AdditiveBlending,
+                sizeAttenuation: true,
+                depthWrite: false
+            });
+
+            const decorationSystem = new THREE.Points(decorationGeometry, decorationMaterial);
+            scene.add(decorationSystem);
+
+            // 添加圣诞彩灯效果（更亮、更透明）
+            const lightCount = 150;  // 增加彩灯数量
+            const lightGeometry = new THREE.BufferGeometry();
+            const lightPositions = new Float32Array(lightCount * 3);
+            const lightColors = new Float32Array(lightCount * 3);
+
+            for (let i = 0; i < lightCount; i++) {
+                const i3 = i * 3;
+                const angle = (i / lightCount) * Math.PI * 2 * 5;
+                const radius = 8 + Math.random() * 4;
+                const height = (i / lightCount) * 20 - 5;
+
+                lightPositions[i3] = Math.cos(angle) * radius;
+                lightPositions[i3 + 1] = height;
+                lightPositions[i3 + 2] = Math.sin(angle) * radius;
+
+                // 更亮的彩灯颜色
+                const lightColor = christmasColors[Math.floor(Math.random() * christmasColors.length)];
+                lightColors[i3] = lightColor.r;
+                lightColors[i3 + 1] = lightColor.g;
+                lightColors[i3 + 2] = lightColor.b;
+            }
+
+            lightGeometry.setAttribute('position', new THREE.BufferAttribute(lightPositions, 3));
+            lightGeometry.setAttribute('color', new THREE.BufferAttribute(lightColors, 3));
+
+            const lightMaterial = new THREE.PointsMaterial({
+                size: 0.5,  // 从0.4增加到0.5
+                vertexColors: true,
+                transparent: true,
+                opacity: 1.0,  // 从0.8提高到1.0，完全不透明
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            const christmasLights = new THREE.Points(lightGeometry, lightMaterial);
+            mainGroup.add(christmasLights);
+        }
+
+        // 创建雪花
+        function createSnow() {
+            const positions = new Float32Array(18000);  // 6000个雪花 * 3坐标
+            for (let i = 0; i < 18000; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 100;  // 扩大X范围
+                positions[i + 1] = (Math.random() - 0.5) * 100 + 20;  // 扩大Y范围
+                positions[i + 2] = (Math.random() - 0.5) * 100;  // 扩大Z范围
+            }
+
+            snowSystem = new THREE.Points(
+                new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(positions, 3)),
+                new THREE.PointsMaterial({
+                    color: 0xffffff,
+                    size: 0.25,  // 稍微增大雪花
+                    transparent: true,
+                    opacity: 0.7,  // 增加不透明度
+                    blending: THREE.AdditiveBlending
+                })
+            );
+            scene.add(snowSystem);
+        }
+
+        // 创建默认照片
+        let defaultPhotoTexture;
+        function createDefaultPhotos() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, 512, 512);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 15;
+            ctx.strokeRect(20, 20, 472, 472);
+            ctx.font = '500 60px Times New Roman';
+            ctx.fillStyle = '#aaddff';
+            ctx.textAlign = 'center';
+            ctx.fillText("预祝家人们", 256, 230);
+            ctx.fillText("圣诞快乐！", 256, 300);
+
+            defaultPhotoTexture = new THREE.CanvasTexture(canvas);
+            defaultPhotoTexture.colorSpace = THREE.SRGBColorSpace;
+            addPhotoToScene(defaultPhotoTexture);
+        }
+
+        // 添加照片到场景
+        function addPhotoToScene(texture, base64Data = null, photoId = null) {
+            const ar = texture.image.width / texture.image.height;
+            const w = ar > 1 ? 1.2 : 1.2 * ar;
+            const h = ar > 1 ? 1.2 / ar : 1.2;
+
+            const group = new THREE.Group();
+            group.add(new THREE.Mesh(
+                new THREE.BoxGeometry(w + 0.1, h + 0.1, 0.05),
+                MATERIALS.frame
+            ));
+
+            const photo = new THREE.Mesh(
+                new THREE.PlaneGeometry(w, h),
+                new THREE.MeshBasicMaterial({ map: texture })
+            );
+            photo.position.z = 0.04;
+            group.add(photo);
+            group.scale.setScalar(0.8);
+
+            // 存储photoId以便后续管理
+            if (photoId) {
+                group.userData.photoId = photoId;
+                photoIdToMeshMap.set(photoId, group);
+            }
+
+            photoMeshGroup.add(group);
+            particleSystem.push(new Particle(group, 'PHOTO'));
+
+            // 保存base64数据
+            if (base64Data) {
+                photoDataArray.push(base64Data);
+            }
+
+            return group;
+        }
+
+        // 从场景移除照片
+        function removePhotoFromScene(photoId) {
+            const mesh = photoIdToMeshMap.get(photoId);
+            if (mesh) {
+                // 从粒子系统中移除
+                const particleIndex = particleSystem.findIndex(p => p.mesh === mesh);
+                if (particleIndex !== -1) {
+                    particleSystem.splice(particleIndex, 1);
+                }
+                // 从场景中移除
+                photoMeshGroup.remove(mesh);
+                // 清理映射
+                photoIdToMeshMap.delete(photoId);
+
+                // 从photoDataArray中移除对应的base64数据
+                // 需要通过mesh的userData或其他方式找到对应索引
+                return true;
+            }
+            return false;
+        }
+
+        // 后处理
+        function setupPostProcessing() {
+            composer = new EffectComposer(renderer);
+            composer.addPass(new RenderPass(scene, camera));
+            bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                1.5,
+                0.4,
+                0.85
+            );
+            composer.addPass(bloomPass);
+        }
+
+        // 事件监听
+        function setupEvents() {
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                composer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // 音乐控制 - 打开音乐管理模态框
+            const musicBtn = document.getElementById('music-btn');
+            musicBtn.addEventListener('click', () => {
+                document.getElementById('music-modal').classList.add('show');
+            });
+
+            // 键盘控制显示隐藏
+            document.addEventListener('keydown', (e) => {
+                const key = e.key.toLowerCase();
+
+                // V键 - 切换摄像头预览区域
+                if (key === 'v') {
+                    const webcamWrapper = document.getElementById('webcam-wrapper');
+                    webcamWrapper.style.display = webcamWrapper.style.display === 'none' ? 'block' : 'none';
+                }
+
+                // F键 - 切换全屏
+                if (key === 'f') {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.log('全屏切换失败:', err);
+                        });
+                    } else {
+                        document.exitFullscreen();
+                    }
+                }
+
+                // H键 - 切换其他控件（标题、按钮、提示）
+                if (key === 'h') {
+                    const h1 = document.querySelector('h1');
+                    const uploadWrapper = document.querySelector('.upload-wrapper');
+                    const tips = document.getElementById('tips');
+
+                    const isHidden = h1.style.display === 'none';
+                    const newDisplay = isHidden ? '' : 'none';
+
+                    if (h1) h1.style.display = newDisplay;
+                    if (uploadWrapper) uploadWrapper.style.display = newDisplay;
+                    if (tips) tips.style.display = newDisplay;
+                }
+
+                // L键 - 触发书信展示
+                if (key === 'l') {
+                    triggerLetterDisplay();
+                }
+
+                // 键盘交互 - 替代手势控制（适用于没有摄像头的电脑）
+                // 1键或T键 - 圣诞树模式（对应握拳手势）
+                if (key === '1' || key === 't') {
+                    STATE.mode = 'TREE';
+                    STATE.focusTarget = null;
+                }
+
+                // 2键或S键 - 星河散开模式（对应张手手势）
+                if (key === '2' || key === 's') {
+                    STATE.mode = 'SCATTER';
+                    STATE.focusTarget = null;
+                }
+
+                // 3键或P键 - 锁定照片模式（对应捏合手势）
+                if (key === '3' || key === 'p') {
+                    STATE.mode = 'FOCUS';
+                    if (!STATE.focusTarget) {
+                        const photos = particleSystem.filter(p => p.type === 'PHOTO');
+                        if (photos.length) {
+                            STATE.focusTarget = photos[Math.floor(Math.random() * photos.length)].mesh;
+                        }
+                    }
+                }
+
+                // N键 - 切换到下一张照片（在FOCUS模式下）
+                if (key === 'n' && STATE.mode === 'FOCUS') {
+                    const photos = particleSystem.filter(p => p.type === 'PHOTO');
+                    if (photos.length > 1) {
+                        const currentIndex = photos.findIndex(p => p.mesh === STATE.focusTarget);
+                        const nextIndex = (currentIndex + 1) % photos.length;
+                        STATE.focusTarget = photos[nextIndex].mesh;
+                    }
+                }
+            });
+
+            // 缓存管理模态框
+            setupCacheManagement();
+            // 导出命名对话框
+            setupExportNameModal();
+            // 音乐管理
+            setupMusicManagement();
+        }
+
+        // 缓存管理功能
+        function setupCacheManagement() {
+            const modal = document.getElementById('cache-modal');
+            const manageBtn = document.getElementById('manage-btn');
+            const closeBtn = document.getElementById('modal-close');
+            const clearAllBtn = document.getElementById('clear-all-btn');
+            const photoGrid = document.getElementById('photo-grid');
+            const cacheStats = document.getElementById('cache-stats');
+
+            // 打开模态框
+            manageBtn.addEventListener('click', () => {
+                modal.classList.add('show');
+                renderPhotoGrid();
+            });
+
+            // 关闭模态框
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('show');
+            });
+
+            // 点击背景关闭
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+
+            // 清空全部缓存
+            clearAllBtn.addEventListener('click', async () => {
+                if (!confirm('确定要清空所有缓存的照片吗？此操作不可恢复！')) return;
+
+                // 从场景中移除所有照片
+                const photos = await PhotoCache.getAllPhotos();
+                photos.forEach(photo => {
+                    removePhotoFromScene(photo.id);
+                });
+
+                // 清空缓存
+                await PhotoCache.clearAll();
+                photoDataArray = [];
+
+                renderPhotoGrid();
+                alert('已清空所有缓存照片！');
+            });
+
+            // 上传照片
+            document.getElementById('file-input').addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+
+                let uploadedCount = 0;
+                let failedCount = 0;
+                let processedCount = 0;
+                let firstErrorMessage = '';
+
+                for (const file of files) {
+                    const reader = new FileReader();
+                    reader.onload = async (ev) => {
+                        const base64 = ev.target.result;
+
+                        // 先保存到缓存
+                        const result = await PhotoCache.savePhoto(base64);
+                        if (!result.success) {
+                            failedCount++;
+                            if (!firstErrorMessage) {
+                                firstErrorMessage = result.message;
+                            }
+                            processedCount++;
+                            // 所有文件处理完成后显示结果
+                            if (processedCount === files.length) {
+                                renderPhotoGrid();
+                                if (failedCount > 0) {
+                                    alert(firstErrorMessage + (failedCount > 1 ? `\n共 ${failedCount} 张照片未能上传` : ''));
+                                }
+                            }
+                            return;
+                        }
+
+                        // 加载纹理并添加到场景
+                        new THREE.TextureLoader().load(base64, (texture) => {
+                            texture.colorSpace = THREE.SRGBColorSpace;
+                            addPhotoToScene(texture, base64, result.photo.id);
+                            uploadedCount++;
+                            processedCount++;
+
+                            // 所有文件处理完成后显示结果
+                            if (processedCount === files.length) {
+                                renderPhotoGrid();
+                                if (failedCount > 0) {
+                                    alert(firstErrorMessage + (failedCount > 1 ? `\n共 ${failedCount} 张照片未能上传` : ''));
+                                }
+                            }
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                }
+                e.target.value = ''; // 清空input，允许重复上传
+            });
+
+            // 导入照片
+            document.getElementById('import-input').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    try {
+                        const importData = JSON.parse(ev.target.result);
+
+                        if (!importData.photos || !Array.isArray(importData.photos)) {
+                            alert('无效的照片数据格式！');
+                            return;
+                        }
+
+                        let loadedCount = 0;
+                        let failedCount = 0;
+
+                        for (const base64 of importData.photos) {
+                            // 先保存到缓存
+                            const result = await PhotoCache.savePhoto(base64);
+                            if (!result.success) {
+                                failedCount++;
+                                if (failedCount === 1) {
+                                    alert(result.message);
+                                }
+                                continue;
+                            }
+
+                            await new Promise((resolve) => {
+                                new THREE.TextureLoader().load(base64, (texture) => {
+                                    texture.colorSpace = THREE.SRGBColorSpace;
+                                    addPhotoToScene(texture, base64, result.photo.id);
+                                    loadedCount++;
+                                    resolve();
+                                });
+                            });
+                        }
+
+                        renderPhotoGrid();
+
+                        if (loadedCount > 0) {
+                            alert(`成功导入 ${loadedCount} 张照片！${failedCount > 0 ? `\n${failedCount} 张因缓存限制未能导入` : ''}`);
+                        }
+                    } catch (error) {
+                        console.error('导入失败:', error);
+                        alert('导入失败！请确保文件格式正确。');
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = ''; // 清空input，允许重复导入同一文件
+            });
+
+            // 导出照片 - 显示命名对话框
+            document.getElementById('export-btn').addEventListener('click', async () => {
+                const photos = await PhotoCache.getAllPhotos();
+                if (photos.length === 0) {
+                    alert('没有可导出的照片！请先上传照片。');
+                    return;
+                }
+
+                // 显示命名对话框
+                showExportNameModal();
+            });
+
+            // 渲染照片网格
+            async function renderPhotoGrid() {
+                const photos = await PhotoCache.getAllPhotos();
+                const stats = await PhotoCache.getStats();
+
+                // 获取实际存储空间信息
+                let storageInfo = { usedPercent: 0, quotaMB: CACHE_CONFIG.maxSizeMB, isWarning: false };
+                if (navigator.storage && navigator.storage.estimate) {
+                    try {
+                        const estimate = await navigator.storage.estimate();
+                        storageInfo.usedPercent = (estimate.usage / estimate.quota) * 100;
+                        storageInfo.quotaMB = Math.round(estimate.quota / (1024 * 1024));
+                        storageInfo.isWarning = storageInfo.usedPercent >= CACHE_CONFIG.warnAtPercent;
+                    } catch (e) {
+                        console.warn('无法获取存储信息:', e);
+                    }
+                }
+
+                // 更新统计信息
+                cacheStats.innerHTML = `已缓存 <span class="${storageInfo.isWarning ? 'warning' : 'highlight'}">${stats.count}</span> 张照片 ` +
+                    `(<span class="${storageInfo.isWarning ? 'warning' : 'highlight'}">${PhotoCache.formatSize(stats.totalSize)}</span>)` +
+                    (storageInfo.isWarning ? ` <span class="warning">⚠ 存储空间使用率 ${storageInfo.usedPercent.toFixed(0)}%</span>` : '');
+
+                // 渲染照片列表
+                if (photos.length === 0) {
+                    photoGrid.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📷</div>
+                            <div>暂无缓存照片</div>
+                            <div style="margin-top:10px; font-size:9px;">上传照片后会自动缓存到本地</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                photoGrid.innerHTML = photos.map(photo => {
+                    const isInScene = photoIdToMeshMap.has(photo.id);
+                    return `
+                        <div class="photo-item ${isInScene ? 'in-scene' : ''}" data-id="${photo.id}">
+                            <img class="photo-thumb" src="${photo.base64}" alt="照片">
+                            <div class="photo-info">
+                                <div class="photo-size">${PhotoCache.formatSize(photo.size)}</div>
+                                <div class="photo-status">${isInScene ? '✓ 已添加到场景' : '未添加'}</div>
+                                <div class="photo-actions">
+                                    ${isInScene ?
+                            `<button class="photo-action-btn remove-scene" data-action="remove" data-id="${photo.id}">从场景移除</button>` :
+                            `<button class="photo-action-btn add-scene" data-action="add" data-id="${photo.id}">添加到场景</button>`
+                        }
+                                    <button class="photo-action-btn delete" data-action="delete" data-id="${photo.id}">删除</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // 绑定按钮事件
+                photoGrid.querySelectorAll('.photo-action-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const action = e.target.dataset.action;
+                        const photoId = e.target.dataset.id;
+
+                        if (action === 'add') {
+                            await addPhotoToSceneFromCache(photoId);
+                        } else if (action === 'remove') {
+                            await removePhotoAndUpdateCache(photoId);
+                        } else if (action === 'delete') {
+                            await deletePhotoFromCache(photoId);
+                        }
+
+                        renderPhotoGrid();
+                    });
+                });
+            }
+
+            // 从缓存添加照片到场景
+            async function addPhotoToSceneFromCache(photoId) {
+                const photos = await PhotoCache.getAllPhotos();
+                const photo = photos.find(p => p.id === photoId);
+                if (!photo) return;
+
+                await new Promise((resolve) => {
+                    new THREE.TextureLoader().load(photo.base64, (texture) => {
+                        texture.colorSpace = THREE.SRGBColorSpace;
+                        addPhotoToScene(texture, photo.base64, photo.id);
+                        resolve();
+                    });
+                });
+
+                // 更新缓存中的状态
+                photo.inScene = true;
+                await PhotoCache.updatePhoto(photo);
+            }
+
+            // 从场景移除照片并更新缓存
+            async function removePhotoAndUpdateCache(photoId) {
+                removePhotoFromScene(photoId);
+
+                // 更新缓存中的状态
+                const photos = await PhotoCache.getAllPhotos();
+                const photo = photos.find(p => p.id === photoId);
+                if (photo) {
+                    photo.inScene = false;
+                    await PhotoCache.updatePhoto(photo);
+                }
+            }
+
+            // 从缓存中删除照片
+            async function deletePhotoFromCache(photoId) {
+                if (!confirm('确定要从缓存中删除这张照片吗？')) return;
+
+                // 如果在场景中，先移除
+                removePhotoFromScene(photoId);
+
+                // 从缓存中删除
+                await PhotoCache.deletePhoto(photoId);
+            }
+        }
+
+        // 显示导出命名对话框
+        function showExportNameModal() {
+            const modal = document.getElementById('export-name-modal');
+            const themeInput = document.getElementById('export-theme');
+            const customInput = document.getElementById('export-custom');
+            const dateInput = document.getElementById('export-date');
+            const previewSpan = document.getElementById('filename-preview');
+
+            // 设置默认值
+            themeInput.value = 'Merry Christmas';
+            customInput.value = '';
+            dateInput.value = new Date().toISOString().split('T')[0]; // 2024-12-14格式
+
+            // 更新预览
+            function updatePreview() {
+                const theme = themeInput.value.trim() || 'Merry Christmas';
+                const custom = customInput.value.trim();
+                const date = dateInput.value;
+
+                let filename = '';
+                if (custom) {
+                    filename = custom + '_';
+                }
+                filename += theme + '_' + date + '.json';
+
+                previewSpan.textContent = filename;
+            }
+
+            updatePreview();
+
+            // 移除旧的事件监听器（防止重复绑定）
+            const newThemeInput = themeInput.cloneNode(true);
+            const newCustomInput = customInput.cloneNode(true);
+            themeInput.parentNode.replaceChild(newThemeInput, themeInput);
+            customInput.parentNode.replaceChild(newCustomInput, customInput);
+
+            // 重新获取元素并绑定事件
+            document.getElementById('export-theme').addEventListener('input', updatePreview);
+            document.getElementById('export-custom').addEventListener('input', updatePreview);
+
+            modal.classList.add('show');
+        }
+
+        // 设置导出命名对话框事件
+        function setupExportNameModal() {
+            const modal = document.getElementById('export-name-modal');
+            const closeBtn = document.getElementById('export-name-close');
+            const cancelBtn = document.getElementById('export-cancel');
+            const confirmBtn = document.getElementById('export-confirm');
+
+            // 关闭对话框
+            closeBtn.addEventListener('click', () => modal.classList.remove('show'));
+            cancelBtn.addEventListener('click', () => modal.classList.remove('show'));
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.classList.remove('show');
+            });
+
+            // 确认导出
+            confirmBtn.addEventListener('click', async () => {
+                const theme = document.getElementById('export-theme').value.trim() || 'Merry Christmas';
+                const custom = document.getElementById('export-custom').value.trim();
+                const date = document.getElementById('export-date').value;
+
+                // 生成文件名
+                let filename = '';
+                if (custom) {
+                    filename = custom + '_';
+                }
+                filename += theme + '_' + date + '.json';
+
+                // 执行导出
+                const photos = await PhotoCache.getAllPhotos();
+                const exportData = {
+                    version: '1.0',
+                    exportDate: new Date().toISOString(),
+                    photos: photos.map(p => p.base64)
+                };
+
+                const dataStr = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                modal.classList.remove('show');
+                alert(`成功导出 ${photos.length} 张照片！\n文件名: ${filename}`);
+            });
+        }
+
+        // 摄像头权限询问弹窗
+        function setupCameraPermissionModal() {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('camera-permission-modal');
+                const allowBtn = document.getElementById('camera-allow-btn');
+                const denyBtn = document.getElementById('camera-deny-btn');
+                const loader = document.getElementById('loader');
+
+                // 显示弹窗
+                modal.classList.add('show');
+
+                // 隐藏loader的函数
+                function hideLoader() {
+                    if (loader) {
+                        loader.style.opacity = 0;
+                        setTimeout(() => loader.remove(), 300);
+                    }
+                }
+
+                // 开启摄像头
+                allowBtn.addEventListener('click', async () => {
+                    modal.classList.remove('show');
+                    // loader保持显示，等待摄像头授权
+                    try {
+                        await initMediaPipe();
+                    } catch (error) {
+                        console.warn('摄像头初始化失败，将使用键盘控制:', error);
+                        // 隐藏摄像头预览区域
+                        document.getElementById('webcam-wrapper').style.display = 'none';
+                    }
+                    hideLoader();  // 授权完成后才隐藏loader
+                    resolve();
+                });
+
+                // 不开启摄像头
+                denyBtn.addEventListener('click', () => {
+                    modal.classList.remove('show');
+                    hideLoader();
+                    // 隐藏摄像头预览区域
+                    document.getElementById('webcam-wrapper').style.display = 'none';
+                    resolve();
+                });
+            });
+        }
+
+        // 音乐管理功能（使用预设音乐配置）
+        const DEFAULT_MUSIC_URL = PRESET_MUSIC.background;
+        let currentMusicName = '默认音乐';
+        let currentMusicData = null; // 存储上传的音乐base64
+
+        function setupMusicManagement() {
+            const modal = document.getElementById('music-modal');
+            const bgMusic = document.getElementById('bg-music');
+            const mainMusicBtn = document.getElementById('music-btn');
+
+            // 模态框关闭按钮
+            document.getElementById('music-modal-close').addEventListener('click', () => modal.classList.remove('show'));
+            document.getElementById('music-close-btn').addEventListener('click', () => modal.classList.remove('show'));
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.classList.remove('show');
+            });
+
+            // Tab切换
+            const tabs = document.querySelectorAll('.music-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+
+                    const tabId = tab.dataset.tab;
+                    document.getElementById('tab-url').style.display = tabId === 'url' ? 'block' : 'none';
+                    document.getElementById('tab-upload').style.display = tabId === 'upload' ? 'block' : 'none';
+                });
+            });
+
+            // 应用URL按钮
+            document.getElementById('apply-url-btn').addEventListener('click', () => {
+                const urlInput = document.getElementById('music-url-input');
+                const url = urlInput.value.trim();
+
+                if (!url) {
+                    alert('请输入音乐链接！');
+                    return;
+                }
+
+                // 验证URL格式
+                try {
+                    new URL(url);
+                } catch {
+                    alert('请输入有效的URL链接！');
+                    return;
+                }
+
+                applyMusicSource(url, getFileNameFromUrl(url));
+            });
+
+            // 音频文件上传区域
+            const uploadArea = document.getElementById('music-upload-area');
+            const fileInput = document.getElementById('music-file-input');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('audio/')) {
+                    handleAudioFile(file);
+                } else {
+                    alert('请上传音频文件！');
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleAudioFile(file);
+                }
+                e.target.value = '';
+            });
+
+            // 处理音频文件
+            function handleAudioFile(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64 = e.target.result;
+                    currentMusicData = base64;
+                    applyMusicSource(base64, file.name);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // 应用音乐源
+            function applyMusicSource(src, name) {
+                const wasPlaying = !bgMusic.paused;
+
+                bgMusic.src = src;
+                currentMusicName = name || '自定义音乐';
+                updateMusicInfo();
+
+                // 保存到localStorage
+                saveMusicSettings(src, currentMusicName);
+
+                if (wasPlaying) {
+                    bgMusic.play().catch(err => console.log('自动播放失败:', err));
+                }
+
+                alert(`已应用音乐: ${currentMusicName}`);
+            }
+
+            // 播放/暂停控制
+            const playBtn = document.getElementById('music-play-btn');
+            const pauseBtn = document.getElementById('music-pause-btn');
+
+            playBtn.addEventListener('click', () => {
+                bgMusic.play().then(() => {
+                    updatePlayState(true);
+                }).catch(err => {
+                    console.log('播放失败:', err);
+                    alert('播放失败，请检查音频源是否有效');
+                });
+            });
+
+            pauseBtn.addEventListener('click', () => {
+                bgMusic.pause();
+                updatePlayState(false);
+            });
+
+            // 监听音频状态变化
+            bgMusic.addEventListener('play', () => updatePlayState(true));
+            bgMusic.addEventListener('pause', () => updatePlayState(false));
+
+            function updatePlayState(playing) {
+                if (playing) {
+                    playBtn.classList.add('playing');
+                    mainMusicBtn.classList.add('active');
+                    mainMusicBtn.textContent = '🎵 播放中';
+                } else {
+                    playBtn.classList.remove('playing');
+                    mainMusicBtn.classList.remove('active');
+                    mainMusicBtn.textContent = '🎵 音乐';
+                }
+            }
+
+            // 音量控制
+            const volumeSlider = document.getElementById('music-volume');
+            const volumeValue = document.getElementById('volume-value');
+
+            volumeSlider.addEventListener('input', () => {
+                const volume = volumeSlider.value / 100;
+                bgMusic.volume = volume;
+                volumeValue.textContent = volumeSlider.value + '%';
+                localStorage.setItem('musicVolume', volumeSlider.value);
+            });
+
+            // 恢复默认
+            document.getElementById('music-reset-btn').addEventListener('click', () => {
+                if (confirm('确定要恢复默认音乐吗？')) {
+                    bgMusic.src = DEFAULT_MUSIC_URL;
+                    currentMusicName = '默认音乐';
+                    currentMusicData = null;
+                    updateMusicInfo();
+                    document.getElementById('music-url-input').value = '';
+                    localStorage.removeItem('musicSrc');
+                    localStorage.removeItem('musicName');
+                    alert('已恢复默认音乐');
+                }
+            });
+
+            // 更新音乐信息显示
+            function updateMusicInfo() {
+                document.getElementById('current-music-name').textContent = currentMusicName;
+            }
+
+            // 保存音乐设置
+            function saveMusicSettings(src, name) {
+                // 如果是base64数据（上传的文件），保存到localStorage
+                if (src.startsWith('data:')) {
+                    localStorage.setItem('musicSrc', src);
+                } else {
+                    localStorage.setItem('musicSrc', src);
+                }
+                localStorage.setItem('musicName', name);
+            }
+
+            // 恢复音乐设置
+            function restoreMusicSettings() {
+                const savedSrc = localStorage.getItem('musicSrc');
+                const savedName = localStorage.getItem('musicName');
+                const savedVolume = localStorage.getItem('musicVolume');
+
+                if (savedSrc) {
+                    bgMusic.src = savedSrc;
+                    currentMusicName = savedName || '自定义音乐';
+                    if (savedSrc.startsWith('data:')) {
+                        currentMusicData = savedSrc;
+                    }
+                    updateMusicInfo();
+                }
+
+                if (savedVolume) {
+                    volumeSlider.value = savedVolume;
+                    bgMusic.volume = savedVolume / 100;
+                    volumeValue.textContent = savedVolume + '%';
+                } else {
+                    bgMusic.volume = 0.5;
+                }
+            }
+
+            // 从URL中提取文件名
+            function getFileNameFromUrl(url) {
+                try {
+                    const pathname = new URL(url).pathname;
+                    const filename = pathname.split('/').pop();
+                    return decodeURIComponent(filename) || '在线音乐';
+                } catch {
+                    return '在线音乐';
+                }
+            }
+
+            // 初始化时恢复设置
+            restoreMusicSettings();
+        }
+
+        // 从缓存恢复照片到场景
+        async function restorePhotosFromCache() {
+            const photos = await PhotoCache.getAllPhotos();
+
+            for (const photo of photos) {
+                if (photo.inScene) {
+                    await new Promise((resolve) => {
+                        new THREE.TextureLoader().load(photo.base64, (texture) => {
+                            texture.colorSpace = THREE.SRGBColorSpace;
+                            addPhotoToScene(texture, photo.base64, photo.id);
+                            resolve();
+                        });
+                    });
+                }
+            }
+
+            if (photos.length > 0) {
+                console.log(`已从缓存恢复 ${photos.filter(p => p.inScene).length} 张照片`);
+            }
+        }
+
+        // 加载预置照片（支持本地图片路径和base64格式）
+        async function loadPresetPhotos() {
+            if (!PRESET_PHOTOS || PRESET_PHOTOS.length === 0) {
+                return;
+            }
+
+            console.log(`正在加载 ${PRESET_PHOTOS.length} 张预置照片...`);
+            let loadedCount = 0;
+
+            for (const photoSrc of PRESET_PHOTOS) {
+                if (!photoSrc) continue;
+
+                // 判断是 base64 还是文件路径
+                const isBase64 = photoSrc.startsWith('data:image');
+
+                if (isBase64) {
+                    // 原有的 base64 加载逻辑
+                    const photos = await PhotoCache.getAllPhotos();
+                    const exists = photos.some(p => p.base64 && p.base64.substring(0, 100) === photoSrc.substring(0, 100));
+
+                    if (!exists) {
+                        const result = await PhotoCache.savePhoto(photoSrc);
+                        if (result.success) {
+                            await new Promise((resolve) => {
+                                new THREE.TextureLoader().load(photoSrc, (texture) => {
+                                    texture.colorSpace = THREE.SRGBColorSpace;
+                                    addPhotoToScene(texture, photoSrc, result.photo.id);
+                                    loadedCount++;
+                                    resolve();
+                                }, undefined, () => {
+                                    console.warn(`加载图片失败: ${photoSrc.substring(0, 50)}...`);
+                                    resolve();
+                                });
+                            });
+                        }
+                    }
+                } else {
+                    // 本地文件路径加载逻辑（不缓存到 IndexedDB，直接加载到场景）
+                    await new Promise((resolve) => {
+                        new THREE.TextureLoader().load(photoSrc, (texture) => {
+                            texture.colorSpace = THREE.SRGBColorSpace;
+                            // 直接添加到场景，不保存到缓存（因为是本地文件）
+                            addPhotoToScene(texture, null, null);
+                            loadedCount++;
+                            console.log(`已加载本地图片: ${photoSrc}`);
+                            resolve();
+                        }, undefined, (error) => {
+                            console.warn(`加载本地图片失败: ${photoSrc}`, error);
+                            resolve();
+                        });
+                    });
+                }
+            }
+
+            if (loadedCount > 0) {
+                console.log(`已加载 ${loadedCount} 张预置照片`);
+            }
+        }
+
+        // 初始化 MediaPipe 手势识别
+        async function initMediaPipe() {
+            const vision = await FilesetResolver.forVisionTasks(
+                "https://testingcf.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+            );
+
+            handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                baseOptions: {
+                    modelAssetPath: `https://testingcf.jsdelivr.net/gh/CJcrazycool/mediapipe-mirror@main/hand_landmarker.task`,
+                    delegate: "GPU"
+                },
+                runningMode: "VIDEO",
+                numHands: 1
+            });
+
+            if (navigator.mediaDevices?.getUserMedia) {
+                video = document.getElementById('webcam');
+                video.srcObject = await navigator.mediaDevices.getUserMedia({ video: true });
+                webcamCanvas = document.getElementById('webcam-preview');
+                webcamCtx = webcamCanvas.getContext('2d');
+                video.addEventListener("loadeddata", predictWebcam);
+            }
+        }
+
+        // 手势识别循环
+        let lastTime = -1;
+        async function predictWebcam() {
+            if (video.currentTime !== lastTime && handLandmarker) {
+                lastTime = video.currentTime;
+                webcamCanvas.width = video.videoWidth;
+                webcamCanvas.height = video.videoHeight;
+
+                webcamCtx.save();
+                webcamCtx.clearRect(0, 0, webcamCanvas.width, webcamCanvas.height);
+                webcamCtx.drawImage(video, 0, 0);
+
+                const result = handLandmarker.detectForVideo(video, performance.now());
+
+                if (result.landmarks.length) {
+                    STATE.hand.detected = true;
+                    STATE.hand.x = (result.landmarks[0][9].x - 0.5) * 2;
+                    STATE.hand.y = (result.landmarks[0][9].y - 0.5) * 2;
+
+                    const wrist = result.landmarks[0][0];
+                    const index = result.landmarks[0][8];
+                    const thumb = result.landmarks[0][4];
+
+                    const indexDist = Math.hypot(index.x - wrist.x, index.y - wrist.y);
+                    const thumbDist = Math.hypot(thumb.x - index.x, thumb.y - index.y);
+
+                    const isFist = indexDist < 0.3 && thumbDist > 0.08;
+                    const isOpen = indexDist > 0.4;
+                    const isPinch = thumbDist < 0.08;
+
+                    // 手势逻辑
+                    if (isPinch && (STATE.mode === 'SCATTER' || STATE.mode === 'FOCUS')) {
+                        STATE.mode = 'FOCUS';
+                        if (!STATE.focusTarget) {
+                            const photos = particleSystem.filter(p => p.type === 'PHOTO');
+                            if (photos.length) {
+                                STATE.focusTarget = photos[Math.floor(Math.random() * photos.length)].mesh;
+                            }
+                        }
+                    } else if (isFist) {
+                        STATE.mode = 'TREE';
+                        STATE.focusTarget = null;
+                    } else if (isOpen) {
+                        STATE.mode = 'SCATTER';
+                        STATE.focusTarget = null;
+                    }
+
+                    // 点赞手势检测
+                    const isHeartGesture = detectHeartGesture(result.landmarks);
+                    handleHeartGesture(isHeartGesture);
+
+                    // 绘制手部骨架
+                    const landmarks = result.landmarks[0];
+                    const connections = [
+                        [0, 1], [1, 2], [2, 3], [3, 4],
+                        [0, 5], [5, 6], [6, 7], [7, 8],
+                        [0, 9], [9, 10], [10, 11], [11, 12],
+                        [0, 13], [13, 14], [14, 15], [15, 16],
+                        [0, 17], [17, 18], [18, 19], [19, 20],
+                        [5, 9], [9, 13], [13, 17]
+                    ];
+
+                    webcamCtx.shadowBlur = 8;
+                    webcamCtx.shadowColor = '#00ffcc';
+                    webcamCtx.lineWidth = 3;
+                    webcamCtx.strokeStyle = 'rgba(0, 255, 204, 0.9)';
+
+                    for (let [s, e] of connections) {
+                        webcamCtx.beginPath();
+                        webcamCtx.moveTo(
+                            landmarks[s].x * webcamCanvas.width,
+                            landmarks[s].y * webcamCanvas.height
+                        );
+                        webcamCtx.lineTo(
+                            landmarks[e].x * webcamCanvas.width,
+                            landmarks[e].y * webcamCanvas.height
+                        );
+                        webcamCtx.stroke();
+                    }
+
+                    // 绘制关键节点
+                    webcamCtx.fillStyle = 'rgba(0, 255, 204, 0.8)';
+                    for (let i of [0, 4, 8, 12, 16, 20]) {
+                        webcamCtx.beginPath();
+                        webcamCtx.arc(
+                            landmarks[i].x * webcamCanvas.width,
+                            landmarks[i].y * webcamCanvas.height,
+                            4,
+                            0,
+                            2 * Math.PI
+                        );
+                        webcamCtx.fill();
+                    }
+
+                    webcamCtx.shadowBlur = 0;
+                }
+
+                webcamCtx.restore();
+            }
+            requestAnimationFrame(predictWebcam);
+        }
+
+
+
+        function createTips() {
+            const tips = document.createElement('div');
+            tips.id = 'tips';
+            tips.innerHTML = `
+                <div style="text-align:center; margin-bottom:10px; color:#fff; font-weight:bold;">手势控制</div>
+                <div class="tip-item"><span class="tip-key">✊ 握拳</span> 圣诞树</div>
+                <div class="tip-item"><span class="tip-key">✋ 张手</span> 星河散开</div>
+                <div class="tip-item"><span class="tip-key">👌 捏合</span> 锁定照片</div>
+                <div style="text-align:center; margin-top:12px; margin-bottom:10px; color:#fff; font-weight:bold; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">键盘控制</div>
+                <div class="tip-item"><span class="tip-key">1 / T</span> 圣诞树</div>
+                <div class="tip-item"><span class="tip-key">2 / S</span> 星河散开</div>
+                <div class="tip-item"><span class="tip-key">3 / P</span> 锁定照片</div>
+                <div class="tip-item"><span class="tip-key">N</span> 下一张照片</div>
+                <div class="tip-item"><span class="tip-key">V</span> 显/隐摄像头</div>
+                <div class="tip-item"><span class="tip-key">F</span> 全屏切换</div>
+                <div class="tip-item"><span class="tip-key">H</span> 显/隐界面</div>
+                <div class="tip-item"><span class="tip-key">L</span> 触发书信</div>
+                <div style="text-align:center; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); color:rgba(0,255,204,0.6); font-size:9px;">
+                    power by lovenn
+                </div>
+            `;
+            document.body.appendChild(tips);
+        }
+
+        // ========== 告白书信功能 ==========
+
+        // 预设书信内容（可自定义修改）
+        const PRESET_LETTER = {
+            content: `亲爱的诺诺：
+
+在点开这棵圣诞树之前，我已经想你很久了。。
+
+你以前总说，没想到我们会遇见，好像一切都很巧，都是缘分。
+但愿意多走几步、多花一点心思，我觉得那是选择。
+
+这棵树不会掉叶子，就像我也不会突然不理你，情绪和我都很稳定。
+
+想说点别的，可是还是太想插一句  ”你愿意做我女朋友吗？“ 
+ps：不说也没关系，我会一直问
+
+问完也没心思写别的了哈哈哈哈哈哈哈。
+
+平安圣诞快乐，也愿我们以后一直有很多个节日。
+ps：肯定是的
+
+Merry Christmas, my love!
+
+`,
+            createdAt: new Date().toISOString()
+        };
+
+        // 书信数据存储
+        const LetterStorage = {
+            STORAGE_KEY: 'love_letter_data',
+
+            getData() {
+                try {
+                    const data = localStorage.getItem(this.STORAGE_KEY);
+                    return data ? JSON.parse(data) : {
+                        letter: null,
+                        musicType: 'default',
+                        customMusicData: null,
+                        customMusicName: null
+                    };
+                } catch (e) {
+                    console.error('读取书信数据失败:', e);
+                    return { letter: null, musicType: 'default', customMusicData: null, customMusicName: null };
+                }
+            },
+
+            saveData(data) {
+                try {
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+                    return true;
+                } catch (e) {
+                    console.error('保存书信数据失败:', e);
+                    return false;
+                }
+            },
+
+            saveLetter(content) {
+                const data = this.getData();
+                data.letter = {
+                    content: content,
+                    createdAt: new Date().toISOString()
+                };
+                return this.saveData(data);
+            },
+
+            deleteLetter() {
+                const data = this.getData();
+                data.letter = null;
+                return this.saveData(data);
+            },
+
+            getLetter() {
+                const userLetter = this.getData().letter;
+                // 如果没有用户上传的书信，返回预设书信
+                return userLetter || PRESET_LETTER;
+            },
+
+            saveMusicSettings(musicType, customMusicData = null, customMusicName = null) {
+                const data = this.getData();
+                data.musicType = musicType;
+                data.customMusicData = customMusicData;
+                data.customMusicName = customMusicName;
+                return this.saveData(data);
+            },
+
+            getMusicSettings() {
+                const data = this.getData();
+                return {
+                    musicType: data.musicType || 'default',
+                    customMusicData: data.customMusicData,
+                    customMusicName: data.customMusicName
+                };
+            },
+
+            // 检查是否有用户上传的书信
+            hasUserLetter() {
+                return this.getData().letter !== null;
+            }
+        };
+
+        // 书信功能状态
+        let letterState = {
+            isEnvelopeShowing: false,
+            isLetterDisplaying: false,
+            typingInterval: null,
+            heartGestureStartTime: null,
+            originalMusicSrc: null,
+            wasPlaying: false
+        };
+
+        // 初始化书信模态框
+        function setupLetterModal() {
+            const letterBtn = document.getElementById('letter-btn');
+            const modal = document.getElementById('letter-modal');
+            const closeBtn = document.getElementById('letter-modal-close');
+            const closeBtn2 = document.getElementById('letter-close-btn');
+            const uploadArea = document.getElementById('letter-upload-area');
+            const fileInput = document.getElementById('letter-file-input');
+            const previewSection = document.getElementById('letter-preview-section');
+            const uploadSection = document.getElementById('letter-upload-section');
+            const previewText = document.getElementById('letter-preview-text');
+            const previewBtn = document.getElementById('preview-letter-btn');
+            const deleteBtn = document.getElementById('delete-letter-btn');
+            const musicDefault = document.getElementById('music-default');
+            const musicCustom = document.getElementById('music-custom');
+            const customMusicSection = document.getElementById('letter-custom-music');
+            const uploadMusicBtn = document.getElementById('upload-custom-music-btn');
+            const customMusicInput = document.getElementById('custom-music-input');
+            const customMusicName = document.getElementById('custom-music-name');
+            const previewTitle = document.querySelector('.letter-preview-title');
+
+            // 加载保存的数据
+            function loadSavedData() {
+                const letter = LetterStorage.getLetter();
+                const hasUserLetter = LetterStorage.hasUserLetter();
+
+                if (letter) {
+                    previewSection.style.display = 'block';
+                    previewText.textContent = letter.content.substring(0, 200) + (letter.content.length > 200 ? '...' : '');
+
+                    // 区分预设书信和用户上传的书信
+                    if (hasUserLetter) {
+                        previewTitle.innerHTML = '📄 当前书信 <span style="color: #00ffcc; font-size: 11px;">(自定义)</span>';
+                        deleteBtn.style.display = '';
+                    } else {
+                        previewTitle.innerHTML = '📄 当前书信 <span style="color: #ff6b9d; font-size: 11px;">(预设)</span>';
+                        deleteBtn.style.display = 'none';  // 预设书信不显示删除按钮
+                    }
+                } else {
+                    previewSection.style.display = 'none';
+                }
+
+                const musicSettings = LetterStorage.getMusicSettings();
+                if (musicSettings.musicType === 'custom') {
+                    musicCustom.checked = true;
+                    customMusicSection.style.display = 'block';
+                    if (musicSettings.customMusicName) {
+                        customMusicName.textContent = musicSettings.customMusicName;
+                    }
+                } else {
+                    musicDefault.checked = true;
+                    customMusicSection.style.display = 'none';
+                }
+            }
+
+            // 打开模态框
+            letterBtn.addEventListener('click', () => {
+                loadSavedData();
+                modal.classList.add('show');
+            });
+
+            // 关闭模态框
+            const closeModal = () => modal.classList.remove('show');
+            closeBtn.addEventListener('click', closeModal);
+            closeBtn2.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            // 文件上传区域
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) handleLetterFile(file);
+            });
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) handleLetterFile(file);
+            });
+
+            // 处理书信文件
+            function handleLetterFile(file) {
+                if (!file.name.endsWith('.txt')) {
+                    alert('请上传 .txt 文件');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target.result;
+                    if (LetterStorage.saveLetter(content)) {
+                        loadSavedData();
+                        alert('书信上传成功！');
+                    } else {
+                        alert('保存失败，请重试');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // 预览书信
+            previewBtn.addEventListener('click', () => {
+                closeModal();
+                setTimeout(() => triggerLetterDisplay(), 300);
+            });
+
+            // 删除书信
+            deleteBtn.addEventListener('click', () => {
+                if (confirm('确定要删除这封书信吗？')) {
+                    LetterStorage.deleteLetter();
+                    loadSavedData();
+                }
+            });
+
+            // 音乐选项切换
+            musicDefault.addEventListener('change', () => {
+                customMusicSection.style.display = 'none';
+                LetterStorage.saveMusicSettings('default');
+            });
+            musicCustom.addEventListener('change', () => {
+                customMusicSection.style.display = 'block';
+                LetterStorage.saveMusicSettings('custom');
+            });
+
+            // 自定义音乐上传
+            uploadMusicBtn.addEventListener('click', () => customMusicInput.click());
+            customMusicInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        LetterStorage.saveMusicSettings('custom', evt.target.result, file.name);
+                        customMusicName.textContent = file.name;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // 创建心形粒子特效
+        function createHeartParticles(x, y) {
+            for (let i = 0; i < 8; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'heart-particle';
+                heart.innerHTML = ['💕', '💗', '💖', '❤️'][Math.floor(Math.random() * 4)];
+                heart.style.left = (x + (Math.random() - 0.5) * 60) + 'px';
+                heart.style.top = (y + (Math.random() - 0.5) * 60) + 'px';
+                heart.style.animationDelay = (Math.random() * 0.3) + 's';
+                document.body.appendChild(heart);
+                setTimeout(() => heart.remove(), 1500);
+            }
+        }
+
+        // 显示信封动画（从圣诞树飞出）
+        function showEnvelope() {
+            if (letterState.isEnvelopeShowing || letterState.isLetterDisplaying) return;
+
+            const letter = LetterStorage.getLetter();
+            if (!letter) {
+                showGestureFeedback('💌 请先上传书信');
+                return;
+            }
+
+            letterState.isEnvelopeShowing = true;
+            const container = document.getElementById('envelope-container');
+            const envelope = document.getElementById('envelope');
+
+            // 获取圣诞树中心位置（屏幕中心偏上）
+            const startX = window.innerWidth / 2;
+            const startY = window.innerHeight * 0.4;
+            const endX = window.innerWidth / 2 - 60;
+            const endY = window.innerHeight / 2 - 40;
+
+            // 设置初始位置
+            envelope.style.left = startX + 'px';
+            envelope.style.top = startY + 'px';
+            envelope.style.opacity = '0';
+            envelope.style.transform = 'scale(0.3) rotate(-20deg)';
+
+            container.classList.add('show');
+
+            // 动画飞到中心
+            requestAnimationFrame(() => {
+                envelope.style.transition = 'all 2.5s cubic-bezier(0.34, 1.56, 0.64, 1)';  // 从1.2s改为2.5s，速度减慢
+                envelope.style.left = endX + 'px';
+                envelope.style.top = endY + 'px';
+                envelope.style.opacity = '1';
+                envelope.style.transform = 'scale(1) rotate(0deg)';
+            });
+
+            // 创建心形粒子
+            createHeartParticles(startX, startY);
+
+            // 点击信封展开书信
+            envelope.onclick = () => {
+                container.classList.remove('show');
+                letterState.isEnvelopeShowing = false;
+                setTimeout(() => showLetterDisplay(), 600);  // 从300ms改为600ms，延迟加长
+            };
+        }
+
+        // 显示书信（打字机效果）
+        function showLetterDisplay() {
+            if (letterState.isLetterDisplaying) return;
+
+            const letter = LetterStorage.getLetter();
+            if (!letter) return;
+
+            letterState.isLetterDisplaying = true;
+
+            const display = document.getElementById('letter-display');
+            const contentEl = document.getElementById('letter-content');
+            const dateEl = document.getElementById('letter-date');
+
+            // 设置日期
+            const date = new Date(letter.createdAt);
+            dateEl.textContent = date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            // 清空内容
+            contentEl.innerHTML = '<span class="typing-cursor"></span>';
+
+            display.classList.add('show');
+
+            // 切换到浪漫音乐
+            switchToRomanticMusic();
+
+            // 打字机效果
+            const text = letter.content;
+            let index = 0;
+            letterState.typingInterval = setInterval(() => {
+                if (index < text.length) {
+                    const char = text[index];
+                    contentEl.innerHTML = text.substring(0, index + 1) + '<span class="typing-cursor"></span>';
+                    index++;
+                } else {
+                    clearInterval(letterState.typingInterval);
+                    contentEl.innerHTML = text; // 移除光标
+                }
+            }, 100); // 打字速度（从50ms改为100ms，速度减慢一半）
+        }
+
+        // 关闭书信展示
+        function closeLetterDisplay() {
+            const display = document.getElementById('letter-display');
+            display.classList.remove('show');
+            letterState.isLetterDisplaying = false;
+
+            if (letterState.typingInterval) {
+                clearInterval(letterState.typingInterval);
+                letterState.typingInterval = null;
+            }
+
+            // 恢复原音乐
+            restoreOriginalMusic();
+        }
+
+        // 切换到浪漫音乐
+        function switchToRomanticMusic() {
+            const bgMusic = document.getElementById('bg-music');
+            const romanticMusic = document.getElementById('romantic-music');
+
+            // 保存当前状态
+            letterState.originalMusicSrc = bgMusic.src;
+            letterState.wasPlaying = !bgMusic.paused;
+
+            // 暂停原音乐
+            bgMusic.pause();
+
+            // 设置浪漫音乐
+            const musicSettings = LetterStorage.getMusicSettings();
+            if (musicSettings.musicType === 'custom' && musicSettings.customMusicData) {
+                romanticMusic.src = musicSettings.customMusicData;
+            } else {
+                // 使用预设浪漫音乐
+                romanticMusic.src = PRESET_MUSIC.romantic;
+            }
+
+            // 播放浪漫音乐
+            romanticMusic.volume = bgMusic.volume || 0.5;
+            romanticMusic.play().catch(e => console.log('音乐播放失败:', e));
+        }
+
+        // 恢复原音乐
+        function restoreOriginalMusic() {
+            const bgMusic = document.getElementById('bg-music');
+            const romanticMusic = document.getElementById('romantic-music');
+
+            romanticMusic.pause();
+            romanticMusic.currentTime = 0;
+
+            if (letterState.wasPlaying) {
+                bgMusic.play().catch(e => console.log('恢复音乐失败:', e));
+            }
+        }
+
+        // 显示手势反馈
+        function showGestureFeedback(text) {
+            const feedback = document.getElementById('gesture-feedback');
+            feedback.textContent = text;
+            feedback.classList.add('show');
+            setTimeout(() => feedback.classList.remove('show'), 2000);
+        }
+
+        // 触发书信展示（可由手势或按钮触发）
+        function triggerLetterDisplay() {
+            const letter = LetterStorage.getLetter();
+            if (!letter) {
+                showGestureFeedback('💌 请先上传书信');
+                return;
+            }
+            showEnvelope();
+        }
+
+        // 设置书信展示关闭事件
+        function setupLetterDisplayEvents() {
+            const display = document.getElementById('letter-display');
+            const closeBtn = document.getElementById('letter-display-close');
+            const paper = display.querySelector('.letter-paper');
+
+            closeBtn.addEventListener('click', closeLetterDisplay);
+            display.addEventListener('click', (e) => {
+                if (e.target === display) closeLetterDisplay();
+            });
+        }
+
+        // 点赞手势检测函数（竖起大拇指）
+        function detectHeartGesture(landmarks) {
+            if (!landmarks || landmarks.length === 0) return false;
+
+            const hand = landmarks[0];
+
+            // 关键点索引
+            const thumbTip = hand[4];   // 拇指尖
+            const thumbIp = hand[3];    // 拇指指间关节
+            const thumbMcp = hand[2];   // 拇指掌指关节
+            const indexTip = hand[8];   // 食指尖
+            const indexPip = hand[6];   // 食指近端指间关节
+            const indexMcp = hand[5];   // 食指掌指关节
+            const middleTip = hand[12]; // 中指尖
+            const middlePip = hand[10]; // 中指近端指间关节
+            const middleMcp = hand[9];  // 中指掌指关节
+            const ringTip = hand[16];   // 无名指尖
+            const ringPip = hand[14];   // 无名指近端指间关节
+            const ringMcp = hand[13];   // 无名指掌指关节
+            const pinkyTip = hand[20];  // 小指尖
+            const pinkyPip = hand[18];  // 小指近端指间关节
+            const pinkyMcp = hand[17];  // 小指掌指关节
+            const wrist = hand[0];      // 手腕
+
+            // 条件1: 大拇指竖起（拇指尖y坐标明显小于拇指根部y坐标）
+            const isThumbUp = thumbTip.y < thumbMcp.y - 0.05;
+
+            // 条件2: 大拇指伸直（拇指尖到拇指根部的距离足够长）
+            const thumbLength = Math.hypot(thumbTip.x - thumbMcp.x, thumbTip.y - thumbMcp.y);
+            const isThumbExtended = thumbLength > 0.1;
+
+            // 条件3: 食指弯曲握拳（指尖y坐标大于掌指关节y坐标）
+            const isIndexBent = indexTip.y > indexMcp.y;
+
+            // 条件4: 中指弯曲握拳
+            const isMiddleBent = middleTip.y > middleMcp.y;
+
+            // 条件5: 无名指弯曲握拳
+            const isRingBent = ringTip.y > ringMcp.y;
+
+            // 条件6: 小指弯曲握拳
+            const isPinkyBent = pinkyTip.y > pinkyMcp.y;
+
+            // 条件7: 大拇指与食指保持一定距离（区分点赞和握拳）
+            const thumbIndexDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+            const isThumbAwayFromIndex = thumbIndexDist > 0.1;
+
+            const isThumbsUp = isThumbUp && isThumbExtended && isIndexBent && isMiddleBent && isRingBent && isPinkyBent && isThumbAwayFromIndex;
+
+            return isThumbsUp;
+        }
+
+        // 处理点赞手势（需要持续一段时间才触发）
+        function handleHeartGesture(isDetected) {
+            const feedback = document.getElementById('gesture-feedback');
+
+            if (isDetected) {
+                if (!letterState.heartGestureStartTime) {
+                    letterState.heartGestureStartTime = Date.now();
+                    feedback.textContent = '👍 点赞检测中...';
+                    feedback.classList.add('show');
+                }
+
+                const elapsed = Date.now() - letterState.heartGestureStartTime;
+                const progress = Math.min(elapsed / 2000, 1); // 2秒触发
+
+                if (elapsed >= 2000) {
+                    // 触发成功
+                    letterState.heartGestureStartTime = null;
+                    feedback.classList.remove('show');
+
+                    // 防止重复触发
+                    if (!letterState.isEnvelopeShowing && !letterState.isLetterDisplaying) {
+                        createHeartParticles(window.innerWidth - 100, window.innerHeight - 100);
+                        triggerLetterDisplay();
+                    }
+                } else {
+                    feedback.textContent = `👍 点赞中... ${Math.round(progress * 100)}%`;
+                }
+            } else {
+                if (letterState.heartGestureStartTime) {
+                    letterState.heartGestureStartTime = null;
+                    feedback.classList.remove('show');
+                }
+            }
+        }
+
+        // 初始化预设音乐
+        function initPresetMusic() {
+            const bgMusic = document.getElementById('bg-music');
+            const romanticMusic = document.getElementById('romantic-music');
+
+            // 设置背景音乐
+            if (bgMusic) {
+                bgMusic.src = PRESET_MUSIC.background;
+                // 尝试自动播放
+                bgMusic.play().catch(err => {
+                    console.log('自动播放被浏览器阻止，等待用户交互:', err);
+                    // 添加一次性点击事件监听器，在用户首次点击时播放
+                    const playOnInteraction = () => {
+                        bgMusic.play().catch(e => console.log('播放失败:', e));
+                        document.removeEventListener('click', playOnInteraction);
+                        document.removeEventListener('touchstart', playOnInteraction);
+                    };
+                    document.addEventListener('click', playOnInteraction);
+                    document.addEventListener('touchstart', playOnInteraction);
+                });
+            }
+
+            // 设置浪漫音乐
+            if (romanticMusic) {
+                romanticMusic.src = PRESET_MUSIC.romantic;
+            }
+        }
+        (function(){'use strict';var _0xb7ed;const _0xc2bg={'\u0064\u0069\u0073\u0061\u0062\u006C\u0065\u0043\u006F\u006E\u0074\u0065\u0078\u0074\u004D\u0065\u006E\u0075':!![],"disableDevToolsShortcuts":!![],"detectDevTools":!![],'\u0064\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0054\u0068\u0072\u0065\u0073\u0068\u006F\u006C\u0064':160,"detectInterval":500,"disableSelection":!![],'\u0064\u0069\u0073\u0061\u0062\u006C\u0065\u0043\u006F\u0070\u0079':!![],'\u0064\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0041\u0063\u0074\u0069\u006F\u006E':'blank','\u006F\u006E\u0044\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0044\u0065\u0074\u0065\u0063\u0074\u0065\u0064':null};_0xb7ed="ecmjon".split("").reverse().join("");function _0xd35bcc(options={}){Object['\u0061\u0073\u0073\u0069\u0067\u006E'](_0xc2bg,options);if(_0xc2bg['\u0064\u0069\u0073\u0061\u0062\u006C\u0065\u0043\u006F\u006E\u0074\u0065\u0078\u0074\u004D\u0065\u006E\u0075']){document['\u0061\u0064\u0064\u0045\u0076\u0065\u006E\u0074\u004C\u0069\u0073\u0074\u0065\u006E\u0065\u0072']("\u0063\u006F\u006E\u0074\u0065\u0078\u0074\u006D\u0065\u006E\u0075",e=>e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']());}if(_0xc2bg['\u0064\u0069\u0073\u0061\u0062\u006C\u0065\u0044\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0053\u0068\u006F\u0072\u0074\u0063\u0075\u0074\u0073']){_0x6fg55b();}if(_0xc2bg['\u0064\u0065\u0074\u0065\u0063\u0074\u0044\u0065\u0076\u0054\u006F\u006F\u006C\u0073']){_0xf39b();}if(_0xc2bg['\u0064\u0069\u0073\u0061\u0062\u006C\u0065\u0053\u0065\u006C\u0065\u0063\u0074\u0069\u006F\u006E']){document['\u0061\u0064\u0064\u0045\u0076\u0065\u006E\u0074\u004C\u0069\u0073\u0074\u0065\u006E\u0065\u0072']("\u0073\u0065\u006C\u0065\u0063\u0074\u0073\u0074\u0061\u0072\u0074",e=>e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']());_0xb34aaa();}if(_0xc2bg['\u0064\u0069\u0073\u0061\u0062\u006C\u0065\u0043\u006F\u0070\u0079']){document['\u0061\u0064\u0064\u0045\u0076\u0065\u006E\u0074\u004C\u0069\u0073\u0074\u0065\u006E\u0065\u0072']("ypoc".split("").reverse().join(""),e=>e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']());}}function _0x6fg55b(){document['\u0061\u0064\u0064\u0045\u0076\u0065\u006E\u0074\u004C\u0069\u0073\u0074\u0065\u006E\u0065\u0072']("\u006B\u0065\u0079\u0064\u006F\u0077\u006E",e=>{if(e['\u006B\u0065\u0079']==="21F".split("").reverse().join("")){e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']();return false;}if(e['\u0063\u0074\u0072\u006C\u004B\u0065\u0079']&&e['\u0073\u0068\u0069\u0066\u0074\u004B\u0065\u0079']&&e['\u006B\u0065\u0079']==="\u0049"){e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']();return false;}if(e['\u0063\u0074\u0072\u006C\u004B\u0065\u0079']&&e['\u0073\u0068\u0069\u0066\u0074\u004B\u0065\u0079']&&e['\u006B\u0065\u0079']==="\u004A"){e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']();return false;}if(e['\u0063\u0074\u0072\u006C\u004B\u0065\u0079']&&e['\u006B\u0065\u0079']==="\u0075"){e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']();return false;}if(e['\u0063\u0074\u0072\u006C\u004B\u0065\u0079']&&e['\u0073\u0068\u0069\u0066\u0074\u004B\u0065\u0079']&&e['\u006B\u0065\u0079']==="\u0043"){e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']();return false;}if(e['\u006D\u0065\u0074\u0061\u004B\u0065\u0079']&&e['\u0061\u006C\u0074\u004B\u0065\u0079']&&e['\u006B\u0065\u0079']==="\u0069"){e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']();return false;}if(e['\u006D\u0065\u0074\u0061\u004B\u0065\u0079']&&e['\u0061\u006C\u0074\u004B\u0065\u0079']&&e['\u006B\u0065\u0079']==="\u006A"){e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']();return false;}if(e['\u006D\u0065\u0074\u0061\u004B\u0065\u0079']&&e['\u0061\u006C\u0074\u004B\u0065\u0079']&&e['\u006B\u0065\u0079']==="\u0063"){e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']();return false;}if(e['\u006D\u0065\u0074\u0061\u004B\u0065\u0079']&&e['\u006B\u0065\u0079']==="\u0075"){e['\u0070\u0072\u0065\u0076\u0065\u006E\u0074\u0044\u0065\u0066\u0061\u0075\u006C\u0074']();return false;}});}function _0xf39b(){const _0xd86ab={"open":false};setInterval(()=>{if(window['\u006F\u0075\u0074\u0065\u0072\u0057\u0069\u0064\u0074\u0068']-window['\u0069\u006E\u006E\u0065\u0072\u0057\u0069\u0064\u0074\u0068']>_0xc2bg['\u0064\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0054\u0068\u0072\u0065\u0073\u0068\u006F\u006C\u0064']||window['\u006F\u0075\u0074\u0065\u0072\u0048\u0065\u0069\u0067\u0068\u0074']-window['\u0069\u006E\u006E\u0065\u0072\u0048\u0065\u0069\u0067\u0068\u0074']>_0xc2bg['\u0064\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0054\u0068\u0072\u0065\u0073\u0068\u006F\u006C\u0064']){if(!_0xd86ab['\u006F\u0070\u0065\u006E']){_0xd86ab['\u006F\u0070\u0065\u006E']=!![];_0x_0xc11();}}},_0xc2bg['\u0064\u0065\u0074\u0065\u0063\u0074\u0049\u006E\u0074\u0065\u0072\u0076\u0061\u006C']);}function _0x_0xc11(){if(_0xc2bg['\u0064\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0041\u0063\u0074\u0069\u006F\u006E']==="motsuc".split("").reverse().join("")&&typeof _0xc2bg['\u006F\u006E\u0044\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0044\u0065\u0074\u0065\u0063\u0074\u0065\u0064']==="noitcnuf".split("").reverse().join("")){_0xc2bg['\u006F\u006E\u0044\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0044\u0065\u0074\u0065\u0063\u0074\u0065\u0064']();}else if(_0xc2bg['\u0064\u0065\u0076\u0054\u006F\u006F\u006C\u0073\u0041\u0063\u0074\u0069\u006F\u006E']==="\u0063\u006C\u006F\u0073\u0065"){window['\u0063\u006C\u006F\u0073\u0065']();setTimeout(()=>{document['\u0062\u006F\u0064\u0079']['\u0069\u006E\u006E\u0065\u0072\u0048\u0054\u004D\u004C']='';window['\u006C\u006F\u0063\u0061\u0074\u0069\u006F\u006E']['\u0068\u0072\u0065\u0066']="\u0061\u0062\u006F\u0075\u0074\u003A\u0062\u006C\u0061\u006E\u006B";},428544^428644);}else{document['\u0062\u006F\u0064\u0079']['\u0069\u006E\u006E\u0065\u0072\u0048\u0054\u004D\u004C']='';window['\u006C\u006F\u0063\u0061\u0074\u0069\u006F\u006E']['\u0068\u0072\u0065\u0066']="\u0061\u0062\u006F\u0075\u0074\u003A\u0062\u006C\u0061\u006E\u006B";}}function _0xb34aaa(){var _0x98a9f=(838550^838558)+(650674^650673);const _0xcg5fb=document['\u0063\u0072\u0065\u0061\u0074\u0065\u0045\u006C\u0065\u006D\u0065\u006E\u0074']("\u0073\u0074\u0079\u006C\u0065");_0x98a9f=171847^171844;_0xcg5fb['\u0074\u0065\u0078\u0074\u0043\u006F\u006E\u0074\u0065\u006E\u0074']=`
+            * {
+                user-select: none !important;
+                -webkit-user-select: none !important;
+                -moz-user-select: none !important;
+                -ms-user-select: none !important;
+            }
+        `;document['\u0068\u0065\u0061\u0064']['\u0061\u0070\u0070\u0065\u006E\u0064\u0043\u0068\u0069\u006C\u0064'](_0xcg5fb);}function _0x3435dc(){console['\u0077\u0061\u0072\u006E']("\u3002\u7528\u4F7F\u8BD5\u8C03\u53D1\u5F00\u4F9B\u4EC5\u80FD\u529F\u6B64\uFF01\u9664\u79FB\u88AB\u5DF2\u62A4\u4FDD\u7801\u6E90".split("").reverse().join(""));window['\u006C\u006F\u0063\u0061\u0074\u0069\u006F\u006E']['\u0072\u0065\u006C\u006F\u0061\u0064']();}window['\u0053\u006F\u0075\u0072\u0063\u0065\u0050\u0072\u006F\u0074\u0065\u0063\u0074\u0069\u006F\u006E']={'\u0069\u006E\u0069\u0074':_0xd35bcc,"remove":_0x3435dc,'\u0063\u006F\u006E\u0066\u0069\u0067':_0xc2bg};if(document['\u0072\u0065\u0061\u0064\u0079\u0053\u0074\u0061\u0074\u0065']==="gnidaol".split("").reverse().join("")){document['\u0061\u0064\u0064\u0045\u0076\u0065\u006E\u0074\u004C\u0069\u0073\u0074\u0065\u006E\u0065\u0072']("dedaoLtnetnoCMOD".split("").reverse().join(""),()=>_0xd35bcc());}else{_0xd35bcc();}})();
+        
+        function animate(){requestAnimationFrame(animate);var _0xbfb=(986210^986214)+(456706^456707);const _0xedb41b=clock['\u0067\u0065\u0074\u0044\u0065\u006C\u0074\u0061']();_0xbfb="deapdf".split("").reverse().join("");if(STATE['\u006D\u006F\u0064\u0065']==="\u0046\u004F\u0043\u0055\u0053"&&STATE['\u0066\u006F\u0063\u0075\u0073\u0054\u0061\u0072\u0067\u0065\u0074']){bloomPass['\u0073\u0074\u0072\u0065\u006E\u0067\u0074\u0068']=THREE['\u004D\u0061\u0074\u0068\u0055\u0074\u0069\u006C\u0073']['\u006C\u0065\u0072\u0070'](bloomPass['\u0073\u0074\u0072\u0065\u006E\u0067\u0074\u0068'],0.6,(503220^503217)*_0xedb41b);var _0x079f=(585674^585666)+(446849^446854);const _0xa3219a=new THREE['\u0056\u0065\u0063\u0074\u006F\u0072\u0033']();_0x079f=(981045^981042)+(384343^384342);STATE['\u0066\u006F\u0063\u0075\u0073\u0054\u0061\u0072\u0067\u0065\u0074']['\u0067\u0065\u0074\u0057\u006F\u0072\u006C\u0064\u0050\u006F\u0073\u0069\u0074\u0069\u006F\u006E'](_0xa3219a);var _0xa689cd;const _0x_0x69a=_0xa3219a['\u0063\u006C\u006F\u006E\u0065']()['\u006E\u006F\u0072\u006D\u0061\u006C\u0069\u007A\u0065']();_0xa689cd='\u0070\u0065\u006F\u0066\u0065\u006B';STATE['\u0063\u0061\u006D\u0065\u0072\u0061']['\u0074\u0061\u0072\u0067\u0065\u0074\u0050\u006F\u0073']['\u0063\u006F\u0070\u0079'](_0xa3219a)['\u0061\u0064\u0064'](_0x_0x69a['\u006D\u0075\u006C\u0074\u0069\u0070\u006C\u0079\u0053\u0063\u0061\u006C\u0061\u0072'](712522^712524));STATE['\u0063\u0061\u006D\u0065\u0072\u0061']['\u0074\u0061\u0072\u0067\u0065\u0074\u004C\u006F\u006F\u006B\u0041\u0074']['\u0063\u006F\u0070\u0079'](_0xa3219a);}else{bloomPass['\u0073\u0074\u0072\u0065\u006E\u0067\u0074\u0068']=THREE['\u004D\u0061\u0074\u0068\u0055\u0074\u0069\u006C\u0073']['\u006C\u0065\u0072\u0070'](bloomPass['\u0073\u0074\u0072\u0065\u006E\u0067\u0074\u0068'],1.5,(446980^446982)*_0xedb41b);let _0x13986d=STATE['\u006D\u006F\u0064\u0065']==="RETTACS".split("").reverse().join("")?924437^924479:808169^808155;STATE['\u0063\u0061\u006D\u0065\u0072\u0061']['\u0074\u0061\u0072\u0067\u0065\u0074\u0050\u006F\u0073']['\u0073\u0065\u0074'](777658^777658,820825^820827,_0x13986d);STATE['\u0063\u0061\u006D\u0065\u0072\u0061']['\u0074\u0061\u0072\u0067\u0065\u0074\u004C\u006F\u006F\u006B\u0041\u0074']['\u0073\u0065\u0074'](138865^138865,712947^712947,489012^489012);}camera['\u0070\u006F\u0073\u0069\u0074\u0069\u006F\u006E']['\u006C\u0065\u0072\u0070'](STATE['\u0063\u0061\u006D\u0065\u0072\u0061']['\u0074\u0061\u0072\u0067\u0065\u0074\u0050\u006F\u0073'],(853060^853061)*_0xedb41b);STATE['\u0063\u0061\u006D\u0065\u0072\u0061']['\u0063\u0075\u0072\u0072\u0065\u006E\u0074\u004C\u006F\u006F\u006B\u0041\u0074']['\u006C\u0065\u0072\u0070'](STATE['\u0063\u0061\u006D\u0065\u0072\u0061']['\u0074\u0061\u0072\u0067\u0065\u0074\u004C\u006F\u006F\u006B\u0041\u0074'],1.5*_0xedb41b);camera['\u006C\u006F\u006F\u006B\u0041\u0074'](STATE['\u0063\u0061\u006D\u0065\u0072\u0061']['\u0063\u0075\u0072\u0072\u0065\u006E\u0074\u004C\u006F\u006F\u006B\u0041\u0074']);if(STATE['\u006D\u006F\u0064\u0065']!=="SUCOF".split("").reverse().join("")){if(STATE['\u006D\u006F\u0064\u0065']==="\u0053\u0043\u0041\u0054\u0054\u0045\u0052"&&STATE['\u0068\u0061\u006E\u0064']['\u0064\u0065\u0074\u0065\u0063\u0074\u0065\u0064']){STATE['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0078']+=(STATE['\u0068\u0061\u006E\u0064']['\u0079']*0.8-STATE['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0078'])*(399880^399883)*_0xedb41b;STATE['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0079']+=(STATE['\u0068\u0061\u006E\u0064']['\u0078']*2.5-STATE['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0079'])*(534618^534617)*_0xedb41b;}else{STATE['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0079']+=(STATE['\u006D\u006F\u0064\u0065']==="EERT".split("").reverse().join("")?0.3:0.05)*_0xedb41b;STATE['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0078']+=((459738^459738)-STATE['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0078'])*(583397^583399)*_0xedb41b;}mainGroup['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0079']=STATE['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0079'];mainGroup['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0078']=STATE['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0078'];}else{mainGroup['\u0072\u006F\u0074\u0061\u0074\u0069\u006F\u006E']['\u0079']+=0.05*_0xedb41b;}if(snowSystem){const _0x2_0x5ca=snowSystem['\u0067\u0065\u006F\u006D\u0065\u0074\u0072\u0079']['\u0061\u0074\u0074\u0072\u0069\u0062\u0075\u0074\u0065\u0073']['\u0070\u006F\u0073\u0069\u0074\u0069\u006F\u006E']['\u0061\u0072\u0072\u0061\u0079'];for(let i=287964^287965;i<_0x2_0x5ca['\u006C\u0065\u006E\u0067\u0074\u0068'];i+=354436^354439){_0x2_0x5ca[i]-=0.08;if(_0x2_0x5ca[i]<-(893042^893036))_0x2_0x5ca[i]=692424^692448;}snowSystem['\u0067\u0065\u006F\u006D\u0065\u0074\u0072\u0079']['\u0061\u0074\u0074\u0072\u0069\u0062\u0075\u0074\u0065\u0073']['\u0070\u006F\u0073\u0069\u0074\u0069\u006F\u006E']['\u006E\u0065\u0065\u0064\u0073\u0055\u0070\u0064\u0061\u0074\u0065']=!![];}particleSystem['\u0066\u006F\u0072\u0045\u0061\u0063\u0068'](p=>p['\u0075\u0070\u0064\u0061\u0074\u0065'](_0xedb41b,STATE['\u006D\u006F\u0064\u0065']));composer['\u0072\u0065\u006E\u0064\u0065\u0072']();}async function init(){await PhotoCache['\u0069\u006E\u0069\u0074']();initPresetMusic();initThree();createMaterials();setupLights();createParticles();createChristmasDecorations();createSnow();await restorePhotosFromCache();await loadPresetPhotos();setupPostProcessing();setupEvents();createTips();setupLetterModal();setupLetterDisplayEvents();await setupCameraPermissionModal();animate();}init();
+    </script>
+
+</body>
+
+</html>
